@@ -8,7 +8,7 @@ import com.mikepenz.markdown.compose.Markdown
 fun ThoonMarkdown(content: String, isOnPanel: Boolean, modifier: Modifier = Modifier) {
     Markdown(
         content = content,
-        colors = if (isOnPanel) ThoonPanelMarkdownColors else ThoonMarkdownColors,
+        colors = if (isOnPanel) thoonPanelMarkdownColors() else thoonMarkdownColors(),
         typography = ThoonMarkdownTypography(),
         modifier = modifier,
     )

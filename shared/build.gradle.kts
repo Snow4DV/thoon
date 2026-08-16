@@ -5,9 +5,23 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
+}
+
+// The app keeps every feature's tables in one database, so this module owns the single `@Database`
+// and is therefore the only place Room's processor runs.
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
+
+    // Room generates the `actual` for ThoonDatabaseConstructor per platform.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -56,6 +70,10 @@ kotlin {
 
             implementation(project(":common:init"))
             implementation(project(":common:log"))
+            implementation(project(":common:database"))
+
+            // This module must see every DAO-owning module: `@Database` has to name their entities.
+            implementation(project(":common:agent:impl"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -65,4 +83,14 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.ui.tooling)
+}
+
+dependencies {
+    listOf(
+        "kspAndroid",
+        "kspIosArm64",
+        "kspIosSimulatorArm64",
+    ).forEach { configuration ->
+        add(configuration, libs.room.compiler)
+    }
 }

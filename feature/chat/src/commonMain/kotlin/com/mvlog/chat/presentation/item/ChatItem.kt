@@ -6,8 +6,10 @@ import kotlin.time.Instant
 
 sealed interface ChatItem {
 
+    val id: String
+
     data class Message(
-        val id: String,
+        override val id: String,
         val contentMarkdown: String,
         val createdAt: Instant,
         val origin: Origin,
@@ -28,17 +30,19 @@ sealed interface ChatItem {
     }
 
     data class Thought(
-        val id: String,
+        override val id: String,
         val createdAt: Instant,
         val thoughts: List<String>,
+        val isExpanded: Boolean = false,
     ) : ChatItem
 
     data class ToolChainCall(
-        val id: String,
+        override val id: String,
         val createdAt: Instant,
         val toolName: String,
         val action: String,
         val status: Status,
+        val isExpanded: Boolean = false,
     ) : ChatItem {
 
         sealed interface Status {

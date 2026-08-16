@@ -8,13 +8,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.File
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Lucide
@@ -42,11 +46,13 @@ fun ChatFileAttachment(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(Theme[colors][panelColor])
-            .padding(10.dp), verticalAlignment = Alignment.CenterVertically
+            .padding(10.dp)
+            .widthIn(max = 150.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, modifier = Modifier.width(30.dp).height(30.dp))
+        Icon(icon, modifier = Modifier.width(25.dp).height(25.dp))
         Spacer(modifier = Modifier.width(5.dp))
-        Text(text = attachment.name, modifier = Modifier, maxLines = 1)
+        Text(text = attachment.name, modifier = Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 16.sp))
     }
 }
 
@@ -54,7 +60,7 @@ fun ChatFileAttachment(
 @Preview
 fun ChatAttachmentsPreview() {
     ThoonPreview {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(5.dp)) {
             ChatFileAttachment(attachment = ChatAttachmentUi(name = "username.txt", type = ChatAttachmentUi.Type.TEXT_FILE))
             ChatFileAttachment(attachment = ChatAttachmentUi(name = "exec.bin", type = ChatAttachmentUi.Type.BINARY))
             ChatFileAttachment(attachment = ChatAttachmentUi(name = "Anapa2007.png", type = ChatAttachmentUi.Type.IMAGE))

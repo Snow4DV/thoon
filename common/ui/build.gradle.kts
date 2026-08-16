@@ -16,7 +16,7 @@ kotlin {
         compileSdk {
             version = release(37)
         }
-        minSdk = 24
+        minSdk = 29
 
         withHostTestBuilder {
         }
@@ -67,6 +67,7 @@ kotlin {
 
                 api(libs.composables.ui)
                 api(libs.composables.icons.lucide)
+                api(libs.composeShimmer)
             }
         }
 
@@ -103,4 +104,8 @@ kotlin {
         }
     }
 
+}
+
+dependencies {
+    androidRuntimeClasspath(libs.compose.ui.tooling)
 }

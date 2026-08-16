@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
@@ -14,7 +16,7 @@ kotlin {
         compileSdk {
             version = release(37)
         }
-        minSdk = 24
+        minSdk = 29
 
         withHostTestBuilder {
         }

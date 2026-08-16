@@ -1,6 +1,6 @@
 package com.mvlog.markdown
 
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.Composable
 import com.composables.ui.theme.borderColor
 import com.composables.ui.theme.colors
 import com.composables.ui.theme.controlColor
@@ -9,32 +9,23 @@ import com.composables.ui.theme.onPanelColor
 import com.composables.ui.theme.panelColor
 import com.composables.ui.theme.secondaryColor
 import com.composeunstyled.theme.Theme
+import com.mikepenz.markdown.model.DefaultMarkdownColors
 import com.mikepenz.markdown.model.MarkdownColors
 
-object ThoonMarkdownColors : MarkdownColors {
-    override val text: Color
-        get() = Theme[colors][onBackgroundColor]
+@Composable
+fun thoonMarkdownColors(): MarkdownColors = DefaultMarkdownColors(
+    text = Theme[colors][onBackgroundColor],
+    codeBackground = Theme[colors][panelColor],
+    inlineCodeBackground = Theme[colors][secondaryColor],
+    dividerColor = Theme[colors][borderColor],
+    tableBackground = Theme[colors][panelColor],
+)
 
-    override val codeBackground: Color
-        get() = Theme[colors][panelColor]
-    override val inlineCodeBackground: Color
-        get() = Theme[colors][secondaryColor]
-    override val dividerColor: Color
-        get() = Theme[colors][borderColor]
-    override val tableBackground: Color
-        get() = Theme[colors][panelColor]
-}
-
-object ThoonPanelMarkdownColors : MarkdownColors {
-    override val text: Color
-        get() = Theme[colors][onPanelColor]
-
-    override val codeBackground: Color
-        get() = Theme[colors][secondaryColor]
-    override val inlineCodeBackground: Color
-        get() = Theme[colors][controlColor]
-    override val dividerColor: Color
-        get() = Theme[colors][borderColor]
-    override val tableBackground: Color
-        get() = Theme[colors][secondaryColor]
-}
+@Composable
+fun thoonPanelMarkdownColors(): MarkdownColors = DefaultMarkdownColors(
+    text = Theme[colors][onPanelColor],
+    codeBackground = Theme[colors][secondaryColor],
+    inlineCodeBackground = Theme[colors][controlColor],
+    dividerColor = Theme[colors][borderColor],
+    tableBackground = Theme[colors][secondaryColor],
+)

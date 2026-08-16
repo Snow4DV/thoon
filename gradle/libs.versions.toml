@@ -1,7 +1,7 @@
 [versions]
 agp = "9.3.1"
 android-compileSdk = "37"
-android-minSdk = "24"
+android-minSdk = "29"
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.7.1"
@@ -28,6 +28,12 @@ composablesUnstyled = "2.7.0"
 composablesIconsLucide = "1.1.0"
 kotlinxSerialization = "1.11.0"
 markdownRenderer = "0.43.0"
+composeShimmer = "1.5.0"
+koog = "1.1.1"
+ksp = "2.3.9"
+room = "2.8.4"
+sqlite = "2.7.0"
+ktor = "3.3.3"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -47,8 +53,10 @@ androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
 # Kotlin commons
 kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 # Circuit
 circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = "circuit" }
@@ -64,12 +72,27 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
 composables-ui = { module = "com.composables:ui", version.ref = "composablesUi" }
-composables-unstyled = { module = "com.composables:unstyled", version.ref = "composablesUnstyled" }
+composables-unstyled = { module = "com.composables:composeunstyled", version.ref = "composablesUnstyled" }
 composables-icons-lucide = { module = "com.composables:icons-lucide", version.ref = "composablesIconsLucide" }
 markdownRenderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdownRenderer" }
+composeShimmer = { module = "com.valentinilk.shimmer:compose-shimmer", version.ref = "composeShimmer" }
 
 # Reliability (logging and metrics)
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+
+# Koog (JetBrains AI agents framework)
+koog-agents = { module = "ai.koog:koog-agents", version.ref = "koog" }
+
+# Networking
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+
+# Persistence
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 
 
 [plugins]
@@ -82,3 +105,6 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 jetbrainsKotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 androidLint = { id = "com.android.lint", version.ref = "agp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

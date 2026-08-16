@@ -4,7 +4,8 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 
 /**
- * Component that is set in `BaseInitiailizer` and is only reset explicitly
+ * Component that is used in modules that provide implementation through build method
+ * and not through set of provider in base initializer
  */
 abstract class LazyComponentHolder<T : Any> : ComponentHolder<T> {
 
@@ -12,24 +13,15 @@ abstract class LazyComponentHolder<T : Any> : ComponentHolder<T> {
 
     private var component: T? = null
 
-    private var componentProvider: (() -> T)? = null
+    abstract fun build(): T
 
     override fun get(): T {
         return component ?: synchronized(lock) {
-            componentProvider?.invoke()?.also { this.component = it }
-                ?: error("Holder ${this::class.simpleName} doesn't have a provider")
+            build().also { this.component = it }
         }
     }
 
     override fun reset() {
         component = null
-    }
-
-    override fun set(componentProvider: () -> T) {
-        this.componentProvider = componentProvider
-    }
-
-    override fun set(component: T) {
-        this.component = component
     }
 }

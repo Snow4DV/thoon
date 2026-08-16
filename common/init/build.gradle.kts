@@ -14,7 +14,7 @@ kotlin {
         compileSdk {
             version = release(37)
         }
-        minSdk = 24
+        minSdk = 29
 
         withHostTestBuilder {
         }

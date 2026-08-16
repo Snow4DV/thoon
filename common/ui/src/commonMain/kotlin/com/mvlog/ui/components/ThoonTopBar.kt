@@ -1,5 +1,6 @@
 package com.mvlog.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,16 +16,14 @@ import com.composables.ui.components.Text
 
 @Composable
 fun ThoonTopBar(
-    title: String,
+    title: @Composable (RowScope.() -> Unit),
     onBackClicked: (() -> Unit)?,
     onOptionsClick: (() -> Unit)?,
     modifier: Modifier,
 ) {
     CenteredToolbar(
         modifier = modifier,
-        title = {
-            Text(title)
-        },
+        title = title,
         leading = {
             onBackClicked?.let {
                 IconButton(

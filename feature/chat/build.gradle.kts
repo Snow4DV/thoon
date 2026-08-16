@@ -77,12 +77,15 @@ kotlin {
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
                 implementation(libs.kotlinx.collections.immutable)
+                implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.composables.ui)
+                implementation(libs.composables.unstyled)
                 implementation(libs.composables.icons.lucide)
                 implementation(libs.markdownRenderer)
                 implementation(project(":common:navigation"))
                 implementation(project(":common:ui"))
                 implementation(project(":common:markdown"))
+                implementation(project(":common:agent:api"))
             }
         }
 
