@@ -150,6 +150,21 @@ class AgentConfigTest {
     }
 
     @Test
+    fun ollamaRequiresAnEndpointBecauseItsDefaultIsUnreachable() = configTest {
+        // Koog defaults to http://localhost:11434, which on a phone or emulator is the device
+        // itself. Saving a blank URL would look fine and then fail at prompt time.
+        assertEquals(
+            AgentConfigError.MissingBaseUrl,
+            createConfig(ollama(baseUrl = "  ")).errorOrNull(),
+        )
+
+        createConfig(ollama(baseUrl = "http://10.0.2.2:11434")).expectSuccess()
+
+        val stored = assertIs<AgentConfig.Ollama>(observeConfigs().first().single())
+        assertEquals("http://10.0.2.2:11434", stored.baseUrl)
+    }
+
+    @Test
     fun updatingAMissingConfigReportsNotFound() = configTest {
         val error = updateConfig(AgentConfigId("nope"), openAi("Ghost")).errorOrNull()
         assertEquals(AgentConfigError.NotFound(AgentConfigId("nope")), error)
@@ -200,6 +215,16 @@ class AgentConfigTest {
         name = name,
         modelId = modelId,
         apiKey = apiKey,
+        baseUrl = baseUrl,
+    )
+
+    private fun ollama(
+        name: String = "Local",
+        modelId: String = "qwen3.8:27b",
+        baseUrl: String = "http://10.0.2.2:11434",
+    ) = AgentConfigDraft.Ollama(
+        name = name,
+        modelId = modelId,
         baseUrl = baseUrl,
     )
 

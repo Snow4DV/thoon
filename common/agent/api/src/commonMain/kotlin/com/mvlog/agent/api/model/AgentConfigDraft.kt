@@ -25,6 +25,13 @@ sealed interface AgentConfigDraft {
         val apiKey: String,
     ) : AgentConfigDraft
 
+    data class Ollama(
+        override val name: String,
+        override val modelId: String,
+        /** Required, unlike the other variants: see [AgentConfig.Ollama]. */
+        val baseUrl: String,
+    ) : AgentConfigDraft
+
     data class Local(
         override val name: String,
         override val modelId: String,

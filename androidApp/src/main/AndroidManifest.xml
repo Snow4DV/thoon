@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The agent talks to an LLM endpoint over HTTP. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      usesCleartextTraffic is debug convenience only: it lets the seeder point at a local LLM
+      server over plain HTTP (http://10.0.2.2:11434 from an emulator). Android has blocked
+      cleartext by default since API 28. Remove it before any release build.
+    -->
     <application
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

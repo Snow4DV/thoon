@@ -28,6 +28,12 @@ internal sealed interface StoredAgentConfigPayload {
     ) : StoredAgentConfigPayload
 
     @Serializable
+    @SerialName("ollama")
+    data class Ollama(
+        val baseUrl: String,
+    ) : StoredAgentConfigPayload
+
+    @Serializable
     @SerialName("local")
     data class Local(
         val engineId: String,
@@ -38,5 +44,6 @@ internal sealed interface StoredAgentConfigPayload {
 internal object AgentConfigKind {
     const val OPENAI_COMPATIBLE = "openai_compatible"
     const val ANTHROPIC = "anthropic"
+    const val OLLAMA = "ollama"
     const val LOCAL = "local"
 }

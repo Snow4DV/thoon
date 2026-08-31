@@ -7,41 +7,41 @@ Everything listed here compiles on **both** Android and iOS, and all tests pass 
 
 Current state: the agent runs as a Koog graph with chat memory and persistence installed, proven
 against a scripted model. Conversations and checkpoints are Room-backed; the timeline and run queue
-are in-memory projections rebuilt from them. The database is fully wired but **has still never been
-opened** — no test executes SQL.
+are in-memory projections rebuilt from them.
+
+**The app now launches and hosts real screens.** Startup runs from `App.kt`, a Circuit graph routes
+between a chats list and the chat screen, and the database opens for the first time when the list
+loads. Everything below is what remains.
 
 ---
 
-## 1. Blocking — nothing works in the real app until these are done
+## 1. Startup and hosting — done
 
-### 1.1 App startup is never invoked
+Recorded rather than deleted, because the shape of it is not obvious from the code.
 
-`FeatureRegistry` exists and registers both initializers, but nothing calls it. Same for the
-on-create actions collector. Until this is wired, no component holder ever gets a provider and the
-first `.get()` throws.
+### 1.1 Startup runs from `App.kt`, not from an `Application` class
 
-- [ ] Call `FeatureRegistry().initialize()` at app start (Android + iOS)
-- [ ] Call `AppOnCreateActionsCollector.execute()` after initializers have run
-- [ ] Android: create an `Application` class (only `MainActivity.kt` exists today) and register it
-      via `android:name` in `androidApp/src/main/AndroidManifest.xml`
-- [ ] iOS: same from `MainViewController`
+`rememberAppStartup()` is an `expect`/`actual` composable in `shared/.../startup/`. The Android
+actual installs the Room `Context` from `LocalContext.current` and then starts; the iOS actual only
+starts, because its `DatabaseBuilderFactory` resolves `NSDocumentDirectory` itself. `AppStartup`
+guards with a flag, then runs `FeatureRegistry().initialize()` followed by
+`AppOnCreateActionsCollector.execute()` — in that order, since the actions resolve the holders the
+initializers register.
 
-### 1.2 Android database `Context` is never installed
+There is deliberately **no `Application` subclass**: both platforms enter through Compose, so this is
+the only place they genuinely share.
 
-`common:database` deliberately does not capture a `Context` itself.
+- [ ] `execute()` builds the Room database object on the main thread (Room opens the file lazily on
+      first query, and those run in `ProcessScope`). If launch ever feels janky, this is the line
+- [ ] `App()` is no longer `@Preview`-able — it installs a context and initialises features. Preview
+      individual screens instead
 
-- [ ] Call `AndroidDatabaseContext.install(this)` from `Application.onCreate`, before any DAO is
-      touched. Missing it throws with an explicit message rather than an NPE.
+### 1.2 Android manifest
 
-### 1.3 The app UI is still the KMP wizard template
+`INTERNET` is now declared. `android:usesCleartextTraffic="true"` is also set so the debug seeder can
+point at a local LLM server over plain HTTP.
 
-`shared/src/commonMain/.../App.kt` is the generated "Click me!" screen. Circuit and `ChatScreen`
-are not reachable from the running app at all.
-
-- [ ] Replace `App.kt` with the real Circuit setup
-- [ ] Add `:common:ui`, `:common:navigation`, `:feature:chat` to `shared/build.gradle.kts`
-      (currently only `:common:init`, `:common:log`, `:common:database`, `:common:agent:impl`)
-- [ ] Wire `ChatPresenter` into a Circuit `Presenter.Factory` / `Ui.Factory`
+- [ ] **Remove `usesCleartextTraffic` before any release build.** It is debug convenience only
 
 ---
 
@@ -54,50 +54,103 @@ are not reachable from the running app at all.
 stub would present a setup problem as a working agent.
 
 - [ ] **No request has ever been sent.** Verify against a real endpoint (OpenAI, OpenRouter, or a
-      local LM Studio / Ollama `/v1` server) — streaming, history round-trip, and error paths
+      local LM Studio / Ollama server) — streaming, history round-trip, and error paths
 - [ ] Tools and planning strategies: the runner is a plain streaming exchange with neither
 
-### 2.1a Mid-run tool calls do not survive a crash (needs the tool loop)
+### 2.1a A crash inside a tool leaves its side effect unrecorded
 
-Checkpoints are written *after a node completes*, and the graph is a single node today. So a run
-killed mid-stream checkpoints nothing — its partial reply, including any tool calls already made, is
-lost. Only the prompt survives, because `SendPromptUseCase` makes it durable before the run starts.
+Checkpoints are written after a node completes (`Persistence.kt:146`). The tool loop put a node
+boundary either side of every tool execution, so a crash now keeps every completed step and loses
+only the node in flight — where before, with one node, it lost the whole run's visible output. That
+was the goal of §2.1a and it is met.
 
-This is the one place the design does not yet deliver what it was built for. It resolves itself once
-the tool loop exists: `respond → executeTools → sendResults → respond` puts a node boundary either
-side of every tool execution, so each one checkpoints as it happens.
+What remains is narrower. A crash *inside* `executeTools` can perform a tool's side effect and
+record nothing, so a resumed turn re-issues it:
 
-- [ ] Build the tool loop, and apply the same `toMessageResponse` → `appendPrompt` → checkpoint
-      pattern to *every* streaming node in it, not just the first
-- [ ] Then assert the original goal: kill a run after a tool call, reopen, see the tool call
+- The window is milliseconds, against streaming nodes that run for tens of seconds.
+- Only `write_file` and `edit_file` have side effects, both inside one chat's sandbox.
+- `write_file` re-run with the same content is harmless. `edit_file` is not idempotent when
+  `new_text` contains `old_text` — the shape of every "append under this heading" edit — and its
+  absent/ambiguous checks both pass, so the text lands twice.
 
-**Notes for whoever extends this.** Koog 1.1.1 does not match the published docs:
-- No `SingleLLMPromptExecutor` — use `MultiLLMPromptExecutor(client)`
-- `OpenAIClientFactory.openAIClient()` / `AnthropicClientFactory.anthropicClient()` are **JVM-only
-  and absent from the iOS klib**; calling them from `commonMain` compiles on Android and breaks the
-  iOS build. Use the constructors, with `HttpClientFactoryResolver.resolve()` for the
-  non-defaulted `httpClientFactory` argument
-- Third-party OpenAI-compatible endpoints need `LLMCapability.OpenAIEndpoint.Completions`, else the
-  client targets the Responses API that most of them don't implement
-- `StreamFrame.ReasoningDelta.text` is nullable
-- If tools are added later, the agent-graph hooks exist: `onLLMStreamingFrameReceived`,
-  `onToolCallStarting` / `Completed` / `Failed`, via `AIAgent.builder().install(…).graphStrategy{}`
+**Deliberately not fixed.** `edit_file` returns the edited region instead, so a double-apply is
+legible in the text the model reads back and it can repair it, rather than sitting silently in the
+file. A real guard (refusing when the file already contains `new_text`) is heuristic and would block
+a legitimate repeated edit. Fixing the ordering properly means journalling intent before dispatch,
+which duplicates Koog's persistence.
+
+- [ ] Revisit if a tool with a side effect outside the sandbox is ever added — that changes the
+      calculation entirely
+- [x] `AgentRunCoordinator` resumes an interrupted tool turn rather than stranding it; see §2.4
+
+### 2.1b The OpenAI-compatible path silently discards reasoning
+
+Only `AgentConfig.Ollama` can produce a thought bubble today. This is a Koog limitation, recorded so
+it is not re-derived: `OpenAIStreamDelta` (`prompt-executor-openai-client-base`,
+`OpenAIDataModels.kt:956`) declares only `content`, `refusal`, `role` and `toolCalls`, and
+`OpenAILLMClient.processStreamingResponse` emits nothing but text and tool-call deltas. Every
+`StreamFrame.ReasoningDelta` in that artifact belongs to the **Responses API** branch, which
+`LLMCapability.OpenAIEndpoint.Completions` deliberately avoids. So a provider that reports thinking
+over `/v1` — Ollama's shim spells it `reasoning`, DeepSeek's `reasoning_content` — has it dropped at
+parse time, before any of our code runs.
+
+- [ ] Revisit when Koog adds the field; the timeline below the client already handles it
+- [ ] `AgentConfig.Anthropic` has never been run at all, so whether Anthropic reasoning arrives is
+      unknown rather than known-broken
+
+### 2.1c Koog's Ollama client drops tools when it streams
+
+`OllamaClient.executeStreaming` accepts `tools: List<ToolDescriptor>` and then builds its
+`OllamaChatRequestDTO` **without a `tools` field** (`OllamaClient.kt:303-311`), while its own
+non-streaming path at line 215 includes it. Our runner streams, so on an Ollama config the model
+would never be told a tool exists — and would simply answer without one, with nothing logged.
+Verified identical in Koog 1.2.0, so an upgrade does not fix it.
+
+`ToolForwardingOllamaClient` routes around it: an `LLMClient` decorator, following Koog's own
+`RetryingLLMClient`, that moves the tools it was handed into `params.additionalProperties` — the one
+channel the delegate forwards, since `OllamaChatRequestDTOSerializer` merges those into the request
+root. Keeping it at the client boundary is the point: `KoogTarget`, the runner, the registry and the
+loop stay provider-agnostic.
+
+- [ ] **Delete the decorator** when Koog forwards tools on the streaming path
+- [ ] It fails silently if Koog changes underneath it — a model told about no tools just answers
+      without them, so only a manual check catches it
 
 ### 2.2 API keys are stored in plaintext
 
 Connection profiles live in `agent_config.payloadJson`, API key included. On Android this is
-app-private storage — a reasonable baseline, but not the Keystore.
+app-private storage — a reasonable baseline, but not the Keystore. `AgentConfig.Ollama` is exempt:
+it holds no credential at all.
+
+**Now reachable from the app**, which raises the stakes: the configuration screen accepts an API key
+by hand, so a real key can be entered without editing source. It goes into the same plaintext column.
 
 - [ ] Add an `expect`/`actual` `SecretStore` (Android Keystore / iOS Keychain) and store only a
       ciphertext blob or alias in the row
 - [ ] Until then, treat a device backup or a rooted device as key exposure
 
-### 2.3 Tools
+### 2.3 Tools — done
 
-- [ ] `KoogToolRegistryFactory` — never written. Agent tools should depend on other features'
-      **api** modules, never the reverse
-- [ ] If features ever need to contribute tools dynamically, add a separate `agent-tool-api`
-      rather than widening `common:agent:api`
+`feature:agent-tools` contributes six: `list_files`, `read_file`, `write_file`, `edit_file`,
+`fetch_url` and `web_search`. They reach the runner through `common:agent:tool-api`, a Koog-free
+contract, so a feature that contributes a tool never compiles against the framework — the separate
+module §2.3 originally called for, rather than widening `common:agent:api`.
+
+`KoogAgentRunner` runs a real loop now: `respond → executeTools → sendToolResults → …`, ending when
+a reply carries no tool calls, bounded by a per-run budget.
+
+- [ ] Deleting a chat does not delete its files. The fix needs a cleanup hook on `tool-api`, because
+      the alternative is `common:agent:impl` depending on a feature module
+- [ ] `web_search` scrapes DuckDuckGo's HTML endpoint. It will break without warning when the markup
+      changes; the tool fails loudly rather than reporting "no results", which is the only reason
+      that is survivable
+- [ ] Nothing rate-limits or budgets tool calls across a conversation, only within one turn
+- [ ] **A chat keeps the system prompt it was created with.** `ChatMemory` replaces the prompt with
+      restored history rather than merging into it, so `AIAgent.builder().systemPrompt(...)` only
+      applies on a chat's first run; after that the stored copy is what the model sees. Editing
+      `AGENT_SYSTEM_PROMPT` therefore reaches new chats only. Fixing it means swapping the stored
+      system message for the current one in `PersistentChatHistoryProvider.load` — worth doing
+      before the prompt ships to anyone, not worth it while it changes hourly
 
 ### 2.4 Process-death recovery — partially done
 
@@ -107,24 +160,34 @@ run that fails for a permanent reason (a bad API key would re-fire on each launc
 
 - [ ] Optional: resume from a checkpoint via `Persistence.Feature.runFromCheckpoint`, using Koog's
       tombstones to tell "killed" from "failed" so a doomed run is not retried forever
-- [ ] The runtime still starts lazily: `ApiComponentHolder` builds on first access, so recovery only
-      runs once something touches the holder. The `AppOnCreateAction` registered by
-      `ThoonAgentInitializer` covers this *if* §1.1 is done.
+- [x] The `AppOnCreateAction` registered by `ThoonAgentInitializer` now runs at startup, so recovery
+      fires without waiting for something to touch the holder.
+- [x] An **interrupted tool turn** is recovered too. The loop created a third way a conversation can
+      end — a user-role message carrying `Tool.Result` parts — which `unansweredPrompt` cannot see,
+      because that message has no text. Such a chat used to look finished and stall forever.
+      `hasUnfinishedToolTurn` detects it and the coordinator resumes it with a *blank* prompt, since
+      the conversation already holds everything the model needs.
 
 ---
 
 ## 3. Database
 
-### 3.1 It has never actually been opened
+### 3.1 It opens now, but no test exercises it
 
 Room's KSP validates every query against the schema at build time, so the SQL is not merely
 hopeful — but **no test has executed a single statement**. `RoomChatHistoryRepository`,
 `RoomCheckpointRepository`, `RoomChatMetadataRepository` and `RoomAgentConfigRepository` have never
 run; every test uses in-memory equivalents.
 
+The app itself now opens it — the chats list reads `agent_chat` on launch, so the Room actuals are
+no longer purely theoretical. **No automated test still executes SQL**, so a regression would only
+surface by running the app.
+
 - [ ] Add instrumented / simulator tests that open `ThoonDatabase` and exercise the repositories
 - [ ] These must live in `:shared` — feature modules cannot build the database, because it sits
       downstream of them (it has to see their entities)
+- [ ] `ChatDao.deleteChat` is the one hand-written `@Transaction` (row + checkpoints, since
+      `agent_checkpoint` has no FK cascade). It has never been executed under test
 
 ### 3.2 Migrations
 
@@ -147,21 +210,83 @@ Recorded so they aren't rediscovered as bugs:
 ## 4. Chat feature
 
 - [ ] **No settings UI exists.** The configuration use cases support create/edit/remove/observe, a
-      global default and per-chat overrides, but nothing calls them — configurations can only be
-      created from code. A `:feature:settings` Circuit screen is the missing piece, and until it
-      exists every prompt fails with "No agent configuration selected"
-- [ ] `ChatScreen` is a `data object` with no `ChatId`, so `ChatPresenter` creates a fresh chat on
-      every composition. Multiple persisted chats need it to become a `data class` carrying a
-      `ChatId`
+      global default and per-chat overrides, but the only thing calling them is
+      `DebugAgentConfigSeeder`, driven by a button on the chats list. Its API key is a hardcoded
+      constant that must be edited by hand. A `:feature:settings` Circuit screen replaces both
 - [ ] Submit is bound to the keyboard's Send action (`ImeAction.Send` + `onKeyboardAction`). There
       is no send button — the `PromptSubmitted` event contract is already in place for one
 - [ ] `CancelGenerationClicked` is handled by the presenter but no UI element emits it
-- [ ] `ChatScreen.Event.Ui.GoBackClicked` is a no-op in the presenter (needs navigation)
-- [ ] Chat title is hardcoded to `"Thoon"`
+- [ ] **Nothing ever names a chat.** `ChatMetadataRepository.setTitle` exists and has no callers, so
+      every `ChatSummary.title` is null and the list falls back to `"Chat <id prefix>"`. Deriving a
+      title from the first prompt is the obvious fix
+- [ ] The chat screen's own title is hardcoded to `"Thoon"`
 - [ ] Attachments: `ChatItem.Message.attachments` is always `persistentListOf()` — the agent api's
       `ChatItem` has no attachment concept yet
 - [ ] Reasoning → `Thought` mapping splits the agent's single reasoning stream on blank lines,
       which is a heuristic, not a real structure
+
+---
+
+## 4a. Chats list — deliberately primitive
+
+`feature/chats-list` exists to make the app testable, not to be the real screen. It lists chats
+newest-first, opens one, creates one, deletes one, and seeds a debug configuration.
+
+- [x] **The feature-to-feature coupling is gone.** Both features are split into `api` (one `Screen`,
+      the navigation key) and `impl` (everything else), so `chats-list:impl` depends on
+      `:feature:chat:api` and nothing more. See §7.
+- [x] Rows show the last thing said, or the matching text when the row came from a search, and a
+      chat is named after its first prompt — `ChatMetadataRepository.setTitle` finally has a caller
+- [ ] Nothing shows *when* a chat last spoke. `lastMessageAt` is stored and sorted on but never
+      rendered; a relative formatter is the missing piece
+- [ ] Delete is still a trash icon on every row. Swipe-to-dismiss suits the redesign better
+- [ ] Deleting a chat does **not** cancel a run already executing for it. The run finishes against a
+      row that no longer exists (`commitHistory` is an `UPDATE`, so it is a harmless no-op) but the
+      work is wasted. Proper cancellation belongs with `AgentRunCoordinator`
+- [ ] No confirmation on delete, no empty-state design, no pagination
+
+---
+
+## 4b. Conversations are rows, not a blob — done
+
+`historyJson` is gone. A conversation is `agent_chat_message` (one row per turn: role and metadata)
+and `agent_chat_part` (one row per text, thought, tool call or result). Each part stores its own
+serialised `MessagePart`, so everything the row model does not name — encrypted reasoning, attachment
+sources, cache control — round-trips through the framework's serialiser rather than through a mapping
+of ours. `KoogMessageRowCodecTest` pins the round trip against all four shapes that occur in
+practice.
+
+Why it changed, measured on a real device database before the work: one 20-message chat held
+**47,275 bytes**, of which **40% was the model's private reasoning** and 12% tool traffic. Every
+metadata read was `SELECT *`, so the chats list loaded all of it to render a title and a timestamp.
+
+Search is now SQL, and correct by construction — verified against that same conversation rebuilt in
+the new schema:
+
+| query | old `historyJson LIKE` | new query |
+|---|---|---|
+| `acceptable`, `address`, `analogy` (reasoning only) | 1 match each | **0** |
+| words from `AGENT_SYSTEM_PROMPT` | would match every chat | **0** |
+| `snapdragon` (actually said) | 1 | 1, with a snippet |
+
+Two clauses carry that and neither is decoration: `kind = 'text'` keeps reasoning and tool output
+out, and `role IN ('user','assistant')` keeps the system prompt out — it is a text part like any
+other.
+
+- [ ] `LIKE '%…%'` cannot use an index, so search scans the parts table. Far cheaper than parsing
+      every conversation, but still a scan — FTS4 is the upgrade, deferred until it is known whether
+      the bundled SQLite ships it on both Android and iOS
+- [ ] **Blobs did not fully disappear.** `AgentCheckpointData.messageHistory` is still serialised
+      whole by `CheckpointCodec` while a run is in flight; that is the framework's type written by
+      its own feature. Only committed conversations are rows
+- [ ] `FORMAT_VERSION` is gone with the blob, and with it the clean "discard it, the chat starts
+      fresh" escape hatch. An unknown part type now fails a conversation loudly, which is the right
+      default but leaves no way to recover the readable half
+- [ ] Appending relies on conversations growing at the end. `conversationDiff` verifies that and
+      rewrites when it does not, but installing a `ChatMemory` windowing preprocessor would make the
+      rewrite path the common one — measure before adding one
+- [ ] No migration exists from version 1. Deliberate: the schema changed pre-release and an old
+      install fails loudly on open
 
 ---
 
@@ -195,10 +320,35 @@ both of which had been invisible for a whole session of "the build is green":
 The class of bug this catches is the one nothing else does: a symbol that exists only in a
 dependency's `jvmCommonMain` (see §6, `HttpClientFactoryResolver`).
 
-### 5.2 Template tests still present
+### 5.2 Template leftovers — removed
 
-- [ ] `shared/src/commonTest/.../SharedCommonTest.kt`, `SharedLogicAndroidHostTest.kt`,
-      `SharedLogicIOSTest.kt` are wizard leftovers asserting `3 == 3`
+`SharedCommonTest`, `SharedLogicAndroidHostTest`, `SharedLogicIOSTest` (all asserting `3 == 3`) are
+gone, along with `Greeting`, `GreetingUtil` and the `Platform` expect/actual that only they used.
+
+- [ ] `feature/chat`'s own `ExampleUnitTest` / `ExampleInstrumentedTest` are still wizard leftovers
+- [ ] The generated `compose_multiplatform` drawable is now unreferenced
+
+---
+
+## 5a. A web target would need a second file store
+
+Not blocking anything — there is no web target today (`android`, `iosArm64`, `iosSimulatorArm64`
+only) — but recorded so the choice is not re-derived. okio publishes `wasmJs` artifacts, yet:
+
+- `FileSystem.SYSTEM` does not exist there; okio's wasm companion declares only
+  `SYSTEM_TEMPORARY_DIRECTORY`, because a browser has no system filesystem.
+- okio's `FileSystem` API is entirely **synchronous** (`source`, `sink`, `list`), and **OPFS is
+  asynchronous**. Its only synchronous door, `createSyncAccessHandle()`, exists solely inside a Web
+  Worker, and directory enumeration stays async even there. So `OpfsFileSystem : FileSystem()`
+  cannot be written.
+
+This is why the seam is our own `suspend ChatFileStore` rather than okio's `FileSystem`: a web port
+writes one more implementation of a four-method interface. The sandbox check lives in commonMain on
+okio's `Path`, which *is* available on wasmJs, so the security-critical part is inherited rather
+than rewritten.
+
+- [ ] The network tools cannot work in a browser at all — CORS blocks both `fetch_url` and
+      `web_search` against third-party origins
 
 ---
 
@@ -226,3 +376,65 @@ dependency's `jvmCommonMain` (see §6, `HttpClientFactoryResolver`).
 - **`Json` is shared** via `common:serialization` and injected into both codecs. `ignoreUnknownKeys`
   is load-bearing, not cosmetic — Koog's checkpoint serializer migrates older payloads and needs
   tolerant decoding. Dropping that flag breaks checkpoint reads
+
+---
+
+## 7. Feature api/impl and the screen collector — done
+
+Each feature publishes a **direction** from a bare `api` module — one file, depending only on
+`circuit-runtime` and `:common:navigation`. Its `impl` registers a `ScreenFactory` with
+`ScreenFactoriesCollector` from its base initializer, keyed by screen type:
+
+```kotlin
+ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenFactory() }
+```
+
+`App.kt` names no feature at all: one `CollectedScreenFactories` is registered with Circuit and
+resolves by looking the screen up, so a feature's component — and through it the agent subsystem —
+is not built until something navigates to it.
+
+No global navigator was added, deliberately. Circuit's `Navigator` already is one, bound to a back
+stack and injected into every presenter; a singleton would have no back stack and would make
+`Navigator.NoOp` in the factory tests impossible.
+
+- [ ] **`shared` still names every initializer** in `FeatureRegistry`. That is inherent to having a
+      composition root, not debt — but it is the one place that still knows the full feature list
+- [ ] A feature that forgets to `collect` renders Circuit's `onUnavailableContent`, not an error.
+      `CollectedScreenFactories` logs it; nothing fails the build
+- [ ] Screens are matched by **exact class**, where a hand-written Circuit factory matches with
+      `is`. Every concrete screen registers itself; a sealed screen hierarchy registered under its
+      base type would not resolve
+- [ ] `skipPast` — Circuit's decorate-a-factory hook — is unusable with a single dispatcher. Nothing
+      used it; the framework itself only ever passes `null`
+
+---
+
+## 8. Configuration screen — done
+
+`feature:agent-configuration` is split api/impl and registers four screens with the collector. The
+seeder is gone: `DebugAgentConfigSeeder` and `SeedDebugConfig` are deleted, and the chats list's
+"Seed debug config" button is a settings icon.
+
+**One screen renders every settings list.** `AgentConfigurationScreen(section)` — the root is a
+section whose rows navigate, so adding a section costs an entry in `ConfigurationSection` and a
+branch in `configurationSectionItems`, which an exhaustive `when` refuses to compile without. Items
+carry their own lambdas rather than string keys, so the UI is a dumb renderer.
+
+**Model & Provider is not settings-shaped and has its own screens** — `AgentConfigListScreen` and
+`AgentConfigEditorScreen`. It is master-detail CRUD over a sealed four-variant type with typed
+validation; running it through the generic renderer would have meant a form library inside a settings
+model.
+
+**Per-chat configuration reuses the renderer** — a single-select list plus a "Manage models…" link,
+reached from the chat's three-dots menu, which until now toggled a boolean nothing rendered.
+
+- [ ] **Agent, Tools and Advanced are empty**, and say why. `agent_settings` holds only
+      `defaultConfigId`, so an edited system prompt or a switched-off tool has nowhere to live.
+      Giving those sections content means columns first
+- [ ] `LocalEnginesCollector` is empty because nothing implements an on-device engine. Registering a
+      descriptor is not enough on its own — a real engine must also teach `KoogClientFactory` how to
+      serve `AgentConfig.Local`, which is where its `error(...)` branch still is
+- [ ] The editor loads a configuration once rather than observing it, so two devices editing the same
+      row would not see each other. Correct for a form; worth revisiting if configurations ever sync
+- [ ] Deleting the default leaves no default, by design (§2.1). The editor does not say so at the
+      moment of deletion

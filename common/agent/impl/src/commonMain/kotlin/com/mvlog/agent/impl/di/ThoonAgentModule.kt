@@ -3,11 +3,15 @@ package com.mvlog.agent.impl.di
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DeleteChatUseCase
+import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
+import com.mvlog.agent.api.usecase.ObserveChatsUseCase
+import com.mvlog.agent.api.usecase.SearchChatsUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
@@ -32,11 +36,15 @@ import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.agent.impl.domain.usecase.CancelAgentRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.DeleteChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.RetryChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.ObserveChatsUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.SearchChatsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveDefaultAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ResolveAgentConfigUseCase
 import com.mvlog.agent.impl.domain.usecase.SendPromptUseCaseImpl
@@ -54,7 +62,8 @@ import com.mvlog.agent.impl.koog.ChatTimelineProjector
 import com.mvlog.agent.impl.koog.CheckpointCodec
 import com.mvlog.agent.impl.koog.KoogConversationRepository
 import com.mvlog.agent.impl.koog.KoogClientFactory
-import com.mvlog.agent.impl.koog.KoogHistoryCodec
+import com.mvlog.agent.impl.koog.KoogMessageRowCodec
+import com.mvlog.agent.impl.koog.KoogToolRegistryFactory
 import com.mvlog.agent.impl.koog.PersistentChatHistoryProvider
 import com.mvlog.agent.impl.koog.RoomPersistenceStorageProvider
 import com.mvlog.agent.impl.mapper.ChatStateApiMapper
@@ -79,7 +88,12 @@ internal interface ThoonAgentModule {
     val startAgentRuntimeUseCase: StartAgentRuntimeUseCase
 
     val observeChatUseCase: ObserveChatUseCase
+    val observeChatsUseCase: ObserveChatsUseCase
+    val searchChatsUseCase: SearchChatsUseCase
     val createChatUseCase: CreateChatUseCase
+    val retryChatUseCase: RetryChatUseCase
+
+    val deleteChatUseCase: DeleteChatUseCase
     val sendPromptUseCase: SendPromptUseCase
     val cancelAgentRunUseCase: CancelAgentRunUseCase
     val observeChatConfigUseCase: ObserveChatConfigUseCase
@@ -101,7 +115,7 @@ internal interface ThoonAgentModule {
 
         private val chatStateApiMapper: ChatStateApiMapper get() = ChatStateApiMapper()
 
-        private val historyCodec: KoogHistoryCodec get() = KoogHistoryCodec(json)
+        private val historyCodec: KoogMessageRowCodec get() = KoogMessageRowCodec(json, idGenerator)
 
         private val checkpointCodec: CheckpointCodec get() = CheckpointCodec(json)
 
@@ -162,12 +176,15 @@ internal interface ThoonAgentModule {
 
         private val koogClientFactory: KoogClientFactory get() = KoogClientFactory(httpClient)
 
+        private val koogToolRegistryFactory: KoogToolRegistryFactory get() = KoogToolRegistryFactory()
+
         override val agentRunnerFactory: AgentRunnerFactory
             get() = DefaultAgentRunnerFactory(
                 chatRepository = chatRepository,
                 historyProvider = chatHistoryProvider,
                 persistenceStorage = persistenceStorageProvider,
                 clientFactory = koogClientFactory,
+                toolRegistryFactory = koogToolRegistryFactory,
                 clock = clock,
             )
 
@@ -194,8 +211,8 @@ internal interface ThoonAgentModule {
             AgentRunCoordinator(
                 runRepository = agentRunRepository,
                 conversationRepository = conversationRepository,
+                retryChat = retryChatUseCase,
                 executor = agentRunExecutor,
-                idGenerator = idGenerator,
                 scope = processScope,
             )
         }
@@ -217,14 +234,31 @@ internal interface ThoonAgentModule {
                 mapper = chatStateApiMapper,
             )
 
+        override val observeChatsUseCase: ObserveChatsUseCase
+            get() = ObserveChatsUseCaseImpl(chatMetadataRepository)
+
+        override val searchChatsUseCase: SearchChatsUseCase
+            get() = SearchChatsUseCaseImpl(chatMetadataRepository)
+
         override val createChatUseCase: CreateChatUseCase
             get() = CreateChatUseCaseImpl(chatMetadataRepository, idGenerator)
+
+        override val retryChatUseCase: RetryChatUseCase
+            get() = RetryChatUseCaseImpl(
+                conversationRepository = conversationRepository,
+                runRepository = agentRunRepository,
+                idGenerator = idGenerator,
+            )
+
+        override val deleteChatUseCase: DeleteChatUseCase
+            get() = DeleteChatUseCaseImpl(chatMetadataRepository)
 
         override val sendPromptUseCase: SendPromptUseCase
             get() = SendPromptUseCaseImpl(
                 chatRepository = chatRepository,
                 runRepository = agentRunRepository,
                 conversationRepository = conversationRepository,
+                metadataRepository = chatMetadataRepository,
                 idGenerator = idGenerator,
             )
 

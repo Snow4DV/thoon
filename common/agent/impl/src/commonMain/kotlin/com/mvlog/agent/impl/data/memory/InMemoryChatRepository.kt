@@ -36,6 +36,9 @@ internal class InMemoryChatRepository(
                     chatId = chatId,
                     runId = runId,
                     sequence = store.nextSequence(chatId),
+                    // Null while the run is in flight: this entry has no stored turn yet, and the
+                    // hydrate that follows the commit replaces it with an anchored one.
+                    messageSequence = null,
                     createdAt = now,
                     updatedAt = now,
                     text = text,
@@ -60,6 +63,7 @@ internal class InMemoryChatRepository(
                         chatId = chatId,
                         runId = runId,
                         sequence = sequence,
+                        messageSequence = null,
                         createdAt = now,
                         updatedAt = now,
                         text = "",
@@ -71,6 +75,7 @@ internal class InMemoryChatRepository(
                         chatId = chatId,
                         runId = runId,
                         sequence = sequence,
+                        messageSequence = null,
                         createdAt = now,
                         updatedAt = now,
                         text = "",
@@ -121,6 +126,7 @@ internal class InMemoryChatRepository(
                     chatId = chatId,
                     runId = runId,
                     sequence = store.nextSequence(chatId),
+                    messageSequence = null,
                     createdAt = now,
                     updatedAt = now,
                     toolCallId = toolCallId,

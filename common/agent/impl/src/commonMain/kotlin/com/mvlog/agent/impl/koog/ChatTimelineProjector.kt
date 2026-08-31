@@ -16,6 +16,12 @@ import kotlin.time.Instant
  * The projection is lossy in one direction only — timestamps come from message metadata where it
  * exists and are otherwise synthesised, because ordering is what the UI needs and the conversation
  * is already in order.
+ *
+ * Every entry carries the index of the message it came from, and that index **is**
+ * `agent_chat_message.sequence`: `KoogMessageRowCodec.toRows` writes `sequence = index` over the
+ * whole list and `toMessages` sorts by it. That equality is what lets a search result — which knows
+ * only a row — point at a rendered entry, whose own id is a counter over *visible* entries and
+ * therefore not invertible. Anything that reorders or filters this input breaks the anchor.
  */
 internal class ChatTimelineProjector {
 
@@ -26,7 +32,7 @@ internal class ChatTimelineProjector {
         val toolCallsById = mutableMapOf<String, Int>()
         var sequence = 0L
 
-        messages.forEach { message ->
+        messages.forEachIndexed { messageIndex, message ->
             val timestamp = message.timestampOrNull() ?: Instant.fromEpochMilliseconds(sequence)
 
             when (message) {
@@ -39,6 +45,9 @@ internal class ChatTimelineProjector {
                             is MessagePart.Tool.Result -> {
                                 val index = part.id?.let(toolCallsById::get) ?: return@forEach
                                 val call = entries[index] as? ChatEntry.ToolCall ?: return@forEach
+                                // `copy` deliberately leaves `messageSequence` alone: the entry
+                                // belongs to the turn that *called* the tool, which is the one
+                                // rendered. Restamping it here would anchor it to the result turn.
                                 entries[index] = call.copy(
                                     status = ToolCallStatus.Completed(part.textOrEmpty()),
                                     updatedAt = timestamp,
@@ -55,6 +64,7 @@ internal class ChatTimelineProjector {
                             chatId = chatId,
                             runId = null,
                             sequence = sequence++,
+                            messageSequence = messageIndex.toLong(),
                             createdAt = timestamp,
                             updatedAt = timestamp,
                             text = text,
@@ -69,6 +79,7 @@ internal class ChatTimelineProjector {
                             chatId = chatId,
                             runId = null,
                             sequence = sequence++,
+                            messageSequence = messageIndex.toLong(),
                             createdAt = timestamp,
                             updatedAt = timestamp,
                             text = (part.content + part.summary).joinToString("\n"),
@@ -80,6 +91,7 @@ internal class ChatTimelineProjector {
                             chatId = chatId,
                             runId = null,
                             sequence = sequence++,
+                            messageSequence = messageIndex.toLong(),
                             createdAt = timestamp,
                             updatedAt = timestamp,
                             text = part.text,
@@ -93,6 +105,7 @@ internal class ChatTimelineProjector {
                                 chatId = chatId,
                                 runId = null,
                                 sequence = sequence++,
+                                messageSequence = messageIndex.toLong(),
                                 createdAt = timestamp,
                                 updatedAt = timestamp,
                                 toolCallId = part.id,

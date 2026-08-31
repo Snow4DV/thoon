@@ -10,6 +10,8 @@ import com.mvlog.agent.impl.data.room.dao.ChatDao
 import com.mvlog.agent.impl.data.room.entity.AgentConfigEntity
 import com.mvlog.agent.impl.data.room.entity.AgentCheckpointEntity
 import com.mvlog.agent.impl.data.room.entity.ChatEntity
+import com.mvlog.agent.impl.data.room.entity.ChatMessageEntity
+import com.mvlog.agent.impl.data.room.entity.ChatPartEntity
 import com.mvlog.agent.impl.data.room.entity.AgentSettingsEntity
 
 /**
@@ -26,6 +28,8 @@ import com.mvlog.agent.impl.data.room.entity.AgentSettingsEntity
     entities = [
         // agent
         ChatEntity::class,
+        ChatMessageEntity::class,
+        ChatPartEntity::class,
         AgentCheckpointEntity::class,
         AgentConfigEntity::class,
         AgentSettingsEntity::class,
@@ -43,7 +47,13 @@ abstract class ThoonDatabase : RoomDatabase() {
     abstract fun agentConfigDao(): AgentConfigDao
 
     companion object {
-        const val VERSION = 1
+        /**
+         * No migration exists from 1: conversations moved from a JSON blob into message and part
+         * rows while the app was pre-release, and reinstalling was cheaper than carrying migration
+         * code nobody would ever exercise again. An older install therefore fails loudly on open,
+         * which is what the deliberate absence of `fallbackToDestructiveMigration` is for.
+         */
+        const val VERSION = 2
     }
 }
 

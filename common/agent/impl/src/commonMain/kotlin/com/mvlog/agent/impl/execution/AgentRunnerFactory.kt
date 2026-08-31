@@ -4,6 +4,7 @@ import com.mvlog.agent.api.model.AgentConfig
 import com.mvlog.agent.impl.domain.repository.ChatRepository
 import com.mvlog.agent.impl.koog.KoogAgentRunner
 import com.mvlog.agent.impl.koog.KoogClientFactory
+import com.mvlog.agent.impl.koog.KoogToolRegistryFactory
 import com.mvlog.agent.impl.koog.PersistentChatHistoryProvider
 import com.mvlog.agent.impl.koog.RoomPersistenceStorageProvider
 import com.mvlog.agent.impl.util.AgentClock
@@ -25,6 +26,7 @@ internal class DefaultAgentRunnerFactory(
     private val historyProvider: PersistentChatHistoryProvider,
     private val persistenceStorage: RoomPersistenceStorageProvider,
     private val clientFactory: KoogClientFactory,
+    private val toolRegistryFactory: KoogToolRegistryFactory,
     private val clock: AgentClock,
 ) : AgentRunnerFactory {
 
@@ -37,11 +39,13 @@ internal class DefaultAgentRunnerFactory(
 
         is AgentConfig.OpenAiCompatible,
         is AgentConfig.Anthropic,
+        is AgentConfig.Ollama,
         -> KoogAgentRunner(
             target = clientFactory.create(config),
             chatRepository = chatRepository,
             historyProvider = historyProvider,
             persistenceStorage = persistenceStorage,
+            toolRegistryFactory = toolRegistryFactory,
             clock = clock,
         )
 

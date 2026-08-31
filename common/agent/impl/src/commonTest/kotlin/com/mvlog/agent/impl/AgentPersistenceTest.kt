@@ -3,18 +3,23 @@ package com.mvlog.agent.impl
 import ai.koog.agents.snapshot.feature.AgentCheckpointData
 import ai.koog.agents.snapshot.feature.isTombstone
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.RequestMetaInfo
+import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.message.MessagePart
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.entity.ChatEntry
 import com.mvlog.agent.impl.execution.AgentExecutionContext
 import com.mvlog.agent.impl.fake.StubLLMClient
 import com.mvlog.agent.impl.fake.TestAgentModule
+import com.mvlog.agent.impl.fake.TestJson
 import com.mvlog.agent.impl.koog.CheckpointCodec
 import com.mvlog.agent.impl.koog.KoogAgentRunner
-import com.mvlog.agent.impl.koog.KoogHistoryCodec
+import com.mvlog.agent.impl.koog.KoogMessageRowCodec
 import com.mvlog.agent.impl.koog.KoogTarget
+import com.mvlog.agent.impl.koog.KoogToolRegistryFactory
 import com.mvlog.agent.api.model.AgentRunId
 import com.mvlog.agent.impl.util.AgentClock
+import com.mvlog.agent.impl.util.IdGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -26,6 +31,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 import kotlin.test.fail
 
 /**
@@ -77,11 +83,14 @@ class AgentPersistenceTest {
     fun toolCallsSurviveIntoCommittedHistory() = persistenceTest { f ->
         f.run(
             StubLLMClient(
-                StubLLMClient.replyWithToolCall(
-                    text = "Looking that up",
-                    toolName = "searchInvoices",
-                    toolArgs = """{"q":"march"}""",
-                )
+                    StubLLMClient.replyWithToolCall(
+                        text = "Looking that up",
+                        toolName = "searchInvoices",
+                        toolArgs = """{"q":"march"}""",
+                    ),
+                    // The turn after the tool result. Without it the stub would ask for the same
+                    // tool forever and the run would only end on its budget.
+                    StubLLMClient.textReply("Found three invoices"),
             )
         )
 
@@ -92,9 +101,121 @@ class AgentPersistenceTest {
     }
 
     @Test
+    fun theLoopKeepsGoingUntilAReplyCarriesNoToolCalls() = persistenceTest { f ->
+        val client = StubLLMClient(
+            StubLLMClient.replyWithToolCall("Checking", "searchInvoices", "{}"),
+            StubLLMClient.replyWithToolCall("And again", "searchInvoices", "{}"),
+            StubLLMClient.textReply("Found them"),
+        )
+
+        f.run(client)
+
+        // Three requests means the loop fed each tool result back and asked again — the whole point
+        // of the graph. One request would mean the run stopped at the first tool call.
+        assertEquals(3, client.prompts.size, "each tool result must produce another request")
+
+        val text = f.committedMessages()
+            .filterIsInstance<Message.Assistant>()
+            .flatMap { it.parts }
+            .filterIsInstance<MessagePart.Text>()
+            .map { it.text }
+        assertTrue("Found them" in text, "the turn ends with the reply that stopped asking")
+    }
+
+    @Test
+    fun theSystemPromptSurvivesIntoLaterTurns() = persistenceTest { f ->
+        // `ChatMemory` *replaces* the prompt with restored history rather than merging into it, so
+        // whatever `systemPrompt(...)` put in the builder is discarded as soon as a chat has any
+        // history. If the system message is not restored here, every turn after the first is sent
+        // with no system prompt — silently, since nothing errors and the model simply answers.
+        f.run(StubLLMClient(StubLLMClient.textReply("first")), prompt = "one")
+
+        val second = StubLLMClient(StubLLMClient.textReply("second"))
+        f.run(second, prompt = "two")
+
+        val sent = second.prompts.single().messages
+        assertTrue(
+            sent.any { it is Message.System },
+            "the second turn reached the model without a system prompt, was: ${sent.map { it::class.simpleName }}",
+        )
+    }
+
+    @Test
+    fun aTurnInterruptedAfterAToolRanIsResumable() = persistenceTest { f ->
+        // The shape a run killed between a tool finishing and the model replying leaves behind.
+        // Written directly because the stub cannot fail one turn and not the next.
+        val now = Clock.System.now()
+        f.commitMessages(
+            listOf(
+                Message.User(
+                    parts = listOf(MessagePart.Text("find my invoices")),
+                    metaInfo = RequestMetaInfo(now),
+                ),
+                Message.Assistant(
+                    parts = listOf(MessagePart.Tool.Call(id = "c1", tool = "searchInvoices", args = "{}")),
+                    metaInfo = ResponseMetaInfo(now),
+                ),
+                // Tool results are a *user* message carrying no text, so the unanswered-prompt
+                // check reads this as nothing at all — which used to leave the chat looking
+                // finished and permanently stalled.
+                Message.User(
+                    parts = listOf(
+                        MessagePart.Tool.Result(
+                            id = "c1",
+                            tool = "searchInvoices",
+                            parts = listOf(MessagePart.Text("three found")),
+                        ),
+                    ),
+                    metaInfo = RequestMetaInfo(now),
+                ),
+            )
+        )
+
+        assertEquals(
+            null,
+            f.module.conversationRepository.unansweredPrompt(f.chatId),
+            "the prompt check cannot see this, which is the whole reason the other one exists",
+        )
+        assertTrue(
+            f.module.conversationRepository.hasUnfinishedToolTurn(f.chatId),
+            "a conversation ending in tool results is an unfinished turn",
+        )
+        assertTrue(
+            f.chatId in f.module.conversationRepository.chatsWithUnansweredPrompts(),
+            "an interrupted tool turn must be recoverable, not silently abandoned",
+        )
+    }
+
+    @Test
+    fun acompletedTurnIsNotTreatedAsUnfinished() = persistenceTest { f ->
+        f.run(StubLLMClient(StubLLMClient.textReply("all done")))
+
+        assertTrue(
+            !f.module.conversationRepository.hasUnfinishedToolTurn(f.chatId),
+            "a turn that ended in a reply must not be resumed, or every launch would re-run it",
+        )
+    }
+
+    @Test
+    fun aRunawayToolLoopStopsAtItsBudget() = persistenceTest { f ->
+        // A model that never stops asking. Without a bound this runs until the framework's own
+        // iteration limit throws, which would surface as a crashed run rather than an answer.
+        val client = StubLLMClient(
+            StubLLMClient.replyWithToolCall("Again", "searchInvoices", "{}"),
+        )
+
+        f.run(client)
+
+        assertTrue(
+            client.prompts.size in 2..20,
+            "the loop must stop on its own budget, but was ${client.prompts.size} requests",
+        )
+    }
+
+    @Test
     fun aFailedRunLeavesItsPartialWorkInACheckpoint() = persistenceTest { f ->
         val failing = StubLLMClient(
-            script = StubLLMClient.replyWithToolCall("Looking", "searchInvoices", "{}"),
+            StubLLMClient.replyWithToolCall("Looking", "searchInvoices", "{}"),
             failAfterFrames = 2,
         )
         runCatching { f.run(failing) }
@@ -139,7 +260,7 @@ class AgentPersistenceTest {
         f.module.conversationRepository.appendUserPrompt(f.chatId, "explain X")
 
         val dying = StubLLMClient(
-            script = StubLLMClient.replyWithToolCall("Looking that up", "searchInvoices", "{}"),
+            StubLLMClient.replyWithToolCall("Looking that up", "searchInvoices", "{}"),
             failAfterFrames = 2,
         )
         runCatching { f.run(dying, prompt = "explain X") }
@@ -188,7 +309,7 @@ class AgentPersistenceTest {
         val chatId: ChatId,
         private val scope: CoroutineScope,
     ) {
-        private val historyCodec = KoogHistoryCodec(TestJson)
+        private val historyCodec = KoogMessageRowCodec(TestJson, IdGenerator.Random)
 
         suspend fun run(client: StubLLMClient, prompt: String = "first question") {
             KoogAgentRunner(
@@ -199,6 +320,9 @@ class AgentPersistenceTest {
                 chatRepository = module.chatRepository,
                 historyProvider = module.chatHistoryProvider,
                 persistenceStorage = module.persistenceStorageProvider,
+                // No provider has registered anything, so this yields an empty registry — these
+                // tests are about persistence, not tools.
+                toolRegistryFactory = KoogToolRegistryFactory(),
                 clock = AgentClock.System,
             ).run(
                 AgentExecutionContext(
@@ -209,9 +333,15 @@ class AgentPersistenceTest {
             )
         }
 
-        suspend fun committedMessages(): List<Message> {
-            val stored = module.chatHistoryRepository.load(chatId) ?: return emptyList()
-            return historyCodec.decode(stored.payload)
+        suspend fun committedMessages(): List<Message> =
+            historyCodec.toMessages(module.chatHistoryRepository.load(chatId))
+
+        /** Writes a conversation directly, for asserting on a shape a run cannot easily produce. */
+        suspend fun commitMessages(messages: List<Message>) {
+            module.chatHistoryRepository.commit(
+                chatId = chatId,
+                messages = historyCodec.toRows(messages),
+            )
         }
 
         /** Checkpoints that still describe unfinished work — tombstones excluded. */
@@ -219,11 +349,6 @@ class AgentPersistenceTest {
             module.checkpointRepository.all(chatId)
                 .map { CheckpointCodec(TestJson).decode(it.payload) }
                 .filterNot { it.isTombstone() }
-    }
-
-    private companion object {
-        /** Same shape as the shared instance from `common:serialization`. */
-        val TestJson = Json { ignoreUnknownKeys = true }
     }
 
     private fun persistenceTest(body: suspend (Fixture) -> Unit): TestResult = runTest {

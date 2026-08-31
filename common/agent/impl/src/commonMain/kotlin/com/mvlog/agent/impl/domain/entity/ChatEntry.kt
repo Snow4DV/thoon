@@ -16,6 +16,15 @@ internal sealed interface ChatEntry {
     /** Null for entries not produced by a run, such as the prompt that started one. */
     val runId: AgentRunId?
     val sequence: Long
+
+    /**
+     * Which stored turn this entry came from, or null for one produced live by a run in flight.
+     *
+     * Distinct from [sequence], which counts *rendered* entries: a turn holding reasoning, a reply
+     * and a tool call becomes three entries sharing one [messageSequence]. That is what makes this
+     * the anchor a search result can point at, and [sequence] not.
+     */
+    val messageSequence: Long?
     val createdAt: Instant
     val updatedAt: Instant
 
@@ -24,6 +33,7 @@ internal sealed interface ChatEntry {
         override val chatId: ChatId,
         override val runId: AgentRunId?,
         override val sequence: Long,
+        override val messageSequence: Long?,
         override val createdAt: Instant,
         override val updatedAt: Instant,
         val text: String,
@@ -34,6 +44,7 @@ internal sealed interface ChatEntry {
         override val chatId: ChatId,
         override val runId: AgentRunId?,
         override val sequence: Long,
+        override val messageSequence: Long?,
         override val createdAt: Instant,
         override val updatedAt: Instant,
         val text: String,
@@ -45,6 +56,7 @@ internal sealed interface ChatEntry {
         override val chatId: ChatId,
         override val runId: AgentRunId?,
         override val sequence: Long,
+        override val messageSequence: Long?,
         override val createdAt: Instant,
         override val updatedAt: Instant,
         val text: String,
@@ -56,6 +68,7 @@ internal sealed interface ChatEntry {
         override val chatId: ChatId,
         override val runId: AgentRunId?,
         override val sequence: Long,
+        override val messageSequence: Long?,
         override val createdAt: Instant,
         override val updatedAt: Instant,
         /** Provider-assigned id, used to correlate a result frame with its request. */

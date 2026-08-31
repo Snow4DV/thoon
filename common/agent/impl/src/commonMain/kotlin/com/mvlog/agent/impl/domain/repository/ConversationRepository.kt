@@ -29,6 +29,19 @@ internal interface ConversationRepository {
     /** The prompt awaiting an answer in this chat, if its conversation ends with one. */
     suspend fun unansweredPrompt(chatId: ChatId): String?
 
-    /** Every chat holding a prompt that was accepted but never answered. */
+    /**
+     * Whether a run was interrupted after a tool ran but before the model replied.
+     *
+     * A distinct condition from [unansweredPrompt], and one the tool loop created: a conversation
+     * can now end with tool results the model never got to use. That message is a `Message.User`
+     * carrying no text, so it reads as neither a prompt nor an answer — leaving the chat looking
+     * finished, permanently stalled, with nothing to indicate it is dead.
+     */
+    suspend fun hasUnfinishedToolTurn(chatId: ChatId): Boolean
+
+    /**
+     * Every chat holding work that was accepted but never answered — an unanswered prompt, or a
+     * turn interrupted mid tool loop.
+     */
     suspend fun chatsWithUnansweredPrompts(): List<ChatId>
 }

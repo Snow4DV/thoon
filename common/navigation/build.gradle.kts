@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.kotlinParcelize)
 }
 
 kotlin {
@@ -23,6 +24,16 @@ kotlin {
             sourceSetTreeName = "test"
         }.configure {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
+
+        // This module declares CommonParcelize, so it also registers it: a `Screen` is Parcelable
+        // on Android, and without this the module could not so much as declare one in its own tests.
+        // https://developer.android.com/kotlin/parcelize#multiplatform
+        compilerOptions {
+            freeCompilerArgs.addAll(
+                "-P",
+                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
+            )
         }
     }
 
@@ -57,6 +68,9 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.stdlib)
                 api(libs.circuit.foundation)
+                // An unregistered screen renders Circuit's fallback rather than failing, so the
+                // dispatcher says so out loud.
+                implementation(project(":common:log"))
             }
         }
 

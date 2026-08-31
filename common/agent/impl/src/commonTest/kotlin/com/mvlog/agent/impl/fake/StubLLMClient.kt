@@ -30,7 +30,16 @@ import kotlin.time.ExperimentalTime
  */
 @OptIn(ExperimentalTime::class)
 internal class StubLLMClient(
-    private val script: List<StreamFrame>,
+    /**
+     * One script per turn, in order.
+     *
+     * More than one because the agent loops: a turn that asks for a tool is followed by another
+     * request once the result comes back. A single script would answer every turn identically, and
+     * a script containing a tool call would then loop until the run hit its budget.
+     *
+     * The last script repeats, so a single-turn test needs no padding.
+     */
+    private vararg val scripts: List<StreamFrame>,
     /** Thrown after emitting [failAfterFrames] frames, to simulate a run dying mid-stream. */
     private val failAfterFrames: Int? = null,
 ) : LLMClient() {
@@ -42,6 +51,7 @@ internal class StubLLMClient(
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): Flow<StreamFrame> = flow {
+        val script = scripts[minOf(prompts.size, scripts.lastIndex)]
         prompts += prompt
         script.forEachIndexed { index, frame ->
             if (failAfterFrames != null && index >= failAfterFrames) {
@@ -58,7 +68,7 @@ internal class StubLLMClient(
     ): Message.Assistant {
         prompts += prompt
         return Message.Assistant(
-            parts = listOf(MessagePart.Text(script.filterIsInstance<StreamFrame.TextDelta>()
+            parts = listOf(MessagePart.Text(scripts.first().filterIsInstance<StreamFrame.TextDelta>()
                 .joinToString("") { it.text })),
             metaInfo = ResponseMetaInfo(timestamp = Clock.System.now()),
         )

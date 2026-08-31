@@ -3,6 +3,7 @@ package com.mvlog.agent.impl.domain.repository
 import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.entity.ChatMetadata
+import com.mvlog.agent.impl.domain.entity.ChatMetadataMatch
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,6 +28,9 @@ internal interface ChatMetadataRepository {
     suspend fun clearConfigOverrides(configId: AgentConfigId)
 
     suspend fun setTitle(chatId: ChatId, title: String?)
+
+    /** Chats whose messages match, with the text that matched. Blank query means every chat. */
+    fun search(query: String): Flow<List<ChatMetadataMatch>>
 
     suspend fun delete(chatId: ChatId)
 }

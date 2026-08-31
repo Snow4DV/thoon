@@ -74,6 +74,18 @@ kotlin {
 
             // This module must see every DAO-owning module: `@Database` has to name their entities.
             implementation(project(":common:agent:impl"))
+
+            // Hosting the screens: :common:navigation brings Circuit itself (it `api`s
+            // circuit-foundation), :common:ui brings the theme every screen reads through.
+            implementation(project(":common:navigation"))
+            implementation(project(":common:ui"))
+            // Impl modules for their initializers only — the composition root is the one place
+            // that must know every feature exists. Screens arrive through the api modules.
+            implementation(project(":feature:chat:impl"))
+            implementation(project(":feature:chats-list:impl"))
+            implementation(project(":feature:chats-list:api"))
+            implementation(project(":feature:agent-tools"))
+            implementation(project(":feature:agent-configuration:impl"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -14,6 +14,9 @@ sealed interface AgentConfigError {
 
     data object MissingApiKey : AgentConfigError
 
+    /** Only for protocols with no usable default endpoint, where a blank URL cannot be filled in. */
+    data object MissingBaseUrl : AgentConfigError
+
     data object BlankEngineId : AgentConfigError
 
     data class MalformedBaseUrl(val value: String) : AgentConfigError

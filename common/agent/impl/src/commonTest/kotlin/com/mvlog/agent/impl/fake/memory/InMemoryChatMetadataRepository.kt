@@ -3,6 +3,7 @@ package com.mvlog.agent.impl.fake.memory
 import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.entity.ChatMetadata
+import com.mvlog.agent.impl.domain.entity.ChatMetadataMatch
 import com.mvlog.agent.impl.domain.repository.ChatMetadataRepository
 import com.mvlog.agent.impl.util.AgentClock
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,8 @@ internal class InMemoryChatMetadataRepository(
             configId = configId,
             createdAt = now,
             updatedAt = now,
+            lastMessageAt = null,
+            lastMessagePreview = null,
         )
     }
 
@@ -33,7 +36,22 @@ internal class InMemoryChatMetadataRepository(
         chats.map { it[chatId] }.distinctUntilChanged()
 
     override fun observeAll(): Flow<List<ChatMetadata>> =
-        chats.map { all -> all.values.sortedByDescending { it.updatedAt } }.distinctUntilChanged()
+        chats.map { all -> all.values.sortedByDescending { it.lastMessageAt ?: it.createdAt } }
+            .distinctUntilChanged()
+
+    /**
+     * Matches titles only.
+     *
+     * The real implementation searches message text through a join this fake has no messages to
+     * join to. Tests that care about matching message bodies belong against the query itself.
+     */
+    override fun search(query: String): Flow<List<ChatMetadataMatch>> {
+        val trimmed = query.trim().lowercase()
+        return observeAll().map { chats ->
+            chats.filter { trimmed.isEmpty() || it.title.orEmpty().lowercase().contains(trimmed) }
+                .map { ChatMetadataMatch(it, snippet = null, messageSequence = null) }
+        }
+    }
 
     override suspend fun setConfigId(chatId: ChatId, configId: AgentConfigId?) {
         update(chatId) { it.copy(configId = configId, updatedAt = clock.now()) }

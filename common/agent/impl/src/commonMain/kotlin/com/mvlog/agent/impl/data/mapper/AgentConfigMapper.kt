@@ -34,6 +34,13 @@ internal class AgentConfigMapper(
                 apiKey = payload.apiKey,
             )
 
+            is StoredAgentConfigPayload.Ollama -> AgentConfig.Ollama(
+                id = id,
+                name = entity.name,
+                modelId = entity.modelId,
+                baseUrl = payload.baseUrl,
+            )
+
             is StoredAgentConfigPayload.Local -> AgentConfig.Local(
                 id = id,
                 name = entity.name,
@@ -54,6 +61,7 @@ internal class AgentConfigMapper(
     private fun kindOf(draft: AgentConfigDraft): String = when (draft) {
         is AgentConfigDraft.OpenAiCompatible -> AgentConfigKind.OPENAI_COMPATIBLE
         is AgentConfigDraft.Anthropic -> AgentConfigKind.ANTHROPIC
+        is AgentConfigDraft.Ollama -> AgentConfigKind.OLLAMA
         is AgentConfigDraft.Local -> AgentConfigKind.LOCAL
     }
 
@@ -67,6 +75,12 @@ internal class AgentConfigMapper(
         is AgentConfigDraft.Anthropic -> StoredAgentConfigPayload.Anthropic(
             baseUrl = draft.baseUrl?.trim()?.ifBlank { null },
             apiKey = draft.apiKey.trim(),
+        )
+
+        // Trimmed but not collapsed to null: this endpoint is required, and validation has
+        // already rejected a blank one.
+        is AgentConfigDraft.Ollama -> StoredAgentConfigPayload.Ollama(
+            baseUrl = draft.baseUrl.trim(),
         )
 
         is AgentConfigDraft.Local -> StoredAgentConfigPayload.Local(

@@ -63,6 +63,9 @@ kotlin {
 
                 // `api` so that whoever wires the component also sees the contract it implements
                 api(project(":common:agent:api"))
+                // Tools reach the runner through this contract; the Koog adapter lives here so
+                // nothing that contributes a tool has to compile against the framework.
+                implementation(project(":common:agent:tool-api"))
                 implementation(project(":common:coroutines"))
                 implementation(project(":common:di"))
                 implementation(project(":common:init"))

@@ -4,11 +4,15 @@ import com.mvlog.agent.api.di.ThoonAgentComponent
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DeleteChatUseCase
+import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
+import com.mvlog.agent.api.usecase.ObserveChatsUseCase
+import com.mvlog.agent.api.usecase.SearchChatsUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
@@ -34,7 +38,15 @@ internal class ThoonAgentComponentImpl(
     // Chat
     override fun observeChatUseCase(): ObserveChatUseCase = module.observeChatUseCase
 
+    override fun observeChatsUseCase(): ObserveChatsUseCase = module.observeChatsUseCase
+
+    override fun searchChatsUseCase(): SearchChatsUseCase = module.searchChatsUseCase
+
     override fun createChatUseCase(): CreateChatUseCase = module.createChatUseCase
+
+    override fun retryChatUseCase(): RetryChatUseCase = module.retryChatUseCase
+
+    override fun deleteChatUseCase(): DeleteChatUseCase = module.deleteChatUseCase
 
     override fun sendPromptUseCase(): SendPromptUseCase = module.sendPromptUseCase
 

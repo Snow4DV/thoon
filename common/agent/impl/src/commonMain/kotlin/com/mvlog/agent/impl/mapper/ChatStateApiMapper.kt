@@ -28,12 +28,14 @@ internal class ChatStateApiMapper {
     private fun mapEntry(entry: ChatEntry): ChatItem = when (entry) {
         is ChatEntry.UserMessage -> ChatItem.UserMessage(
             id = entry.id,
+            messageSequence = entry.messageSequence,
             createdAt = entry.createdAt,
             text = entry.text,
         )
 
         is ChatEntry.AssistantMessage -> ChatItem.AssistantMessage(
             id = entry.id,
+            messageSequence = entry.messageSequence,
             createdAt = entry.createdAt,
             text = entry.text,
             isStreaming = entry.isStreaming,
@@ -41,6 +43,7 @@ internal class ChatStateApiMapper {
 
         is ChatEntry.Reasoning -> ChatItem.Reasoning(
             id = entry.id,
+            messageSequence = entry.messageSequence,
             createdAt = entry.createdAt,
             text = entry.text,
             isStreaming = entry.isStreaming,
@@ -48,6 +51,7 @@ internal class ChatStateApiMapper {
 
         is ChatEntry.ToolCall -> ChatItem.ToolCall(
             id = entry.id,
+            messageSequence = entry.messageSequence,
             createdAt = entry.createdAt,
             name = entry.name,
             arguments = entry.arguments,

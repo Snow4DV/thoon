@@ -77,6 +77,13 @@ internal class InMemoryAgentConfigRepository : AgentConfigRepository {
             apiKey = apiKey.trim(),
         )
 
+        is AgentConfigDraft.Ollama -> AgentConfig.Ollama(
+            id = id,
+            name = name.trim(),
+            modelId = modelId.trim(),
+            baseUrl = baseUrl.trim(),
+        )
+
         is AgentConfigDraft.Local -> AgentConfig.Local(
             id = id,
             name = name.trim(),

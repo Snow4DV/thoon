@@ -11,4 +11,20 @@ internal data class ChatMetadata(
     val configId: AgentConfigId?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /** When someone last said something. Null until the first turn commits. */
+    val lastMessageAt: Instant?,
+    val lastMessagePreview: String?,
+)
+
+/**
+ * One message that matched a search, and the chat it is in.
+ *
+ * A chat matching several times yields several of these. [messageSequence] says which turn, so a
+ * result can open at it; both it and [snippet] are null on the blank-query path, where every chat is
+ * listed and nothing in particular matched.
+ */
+internal data class ChatMetadataMatch(
+    val chat: ChatMetadata,
+    val snippet: String?,
+    val messageSequence: Long?,
 )

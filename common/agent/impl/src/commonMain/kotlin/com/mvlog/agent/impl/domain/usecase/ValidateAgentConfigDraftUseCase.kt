@@ -26,6 +26,13 @@ internal class ValidateAgentConfigDraftUseCase {
                 draft.baseUrl.validateAsUrl()
             }
 
+            // No key — Ollama does not authenticate — but the endpoint is mandatory: its default
+            // is localhost, which on a phone or emulator is the device rather than the host.
+            is AgentConfigDraft.Ollama -> {
+                if (draft.baseUrl.isBlank()) return AgentConfigError.MissingBaseUrl
+                draft.baseUrl.validateAsUrl()
+            }
+
             // No key: an on-device engine has no endpoint to authenticate against.
             is AgentConfigDraft.Local ->
                 if (draft.engineId.isBlank()) AgentConfigError.BlankEngineId else null

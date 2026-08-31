@@ -2,6 +2,7 @@ package com.mvlog.agent.impl.koog
 
 import ai.koog.agents.snapshot.feature.isTombstone
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.RequestMetaInfo
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.entity.ChatEntry
@@ -24,7 +25,7 @@ internal class KoogConversationRepository(
     private val historyRepository: ChatHistoryRepository,
     private val checkpointRepository: CheckpointRepository,
     private val metadataRepository: ChatMetadataRepository,
-    private val historyCodec: KoogHistoryCodec,
+    private val historyCodec: KoogMessageRowCodec,
     private val checkpointCodec: CheckpointCodec,
     private val projector: ChatTimelineProjector,
     private val clock: AgentClock,
@@ -42,11 +43,7 @@ internal class KoogConversationRepository(
             metaInfo = RequestMetaInfo(timestamp = clock.now()),
         )
 
-        historyRepository.commit(
-            chatId = chatId,
-            formatVersion = KoogHistoryCodec.FORMAT_VERSION,
-            payload = historyCodec.encode(appended),
-        )
+        historyRepository.commit(chatId = chatId, messages = historyCodec.toRows(appended))
     }
 
     override suspend fun unansweredPrompt(chatId: ChatId): String? =
@@ -55,10 +52,22 @@ internal class KoogConversationRepository(
             ?.textContent()
             ?.takeIf { it.isNotBlank() }
 
+    /**
+     * True when the conversation ends with tool results.
+     *
+     * Checked by parts rather than by text: a tool result is a `Message.User` whose content is the
+     * result payload, so [unansweredPrompt] reads it as a prompt with nothing in it and skips the
+     * chat entirely.
+     */
+    override suspend fun hasUnfinishedToolTurn(chatId: ChatId): Boolean =
+        messages(chatId).lastOrNull()
+            ?.let { last -> last is Message.User && last.parts.any { it is MessagePart.Tool.Result } }
+            ?: false
+
     override suspend fun chatsWithUnansweredPrompts(): List<ChatId> =
         metadataRepository.observeAll().first()
             .map { it.id }
-            .filter { unansweredPrompt(it) != null }
+            .filter { unansweredPrompt(it) != null || hasUnfinishedToolTurn(it) }
 
     /** Uncommitted work if a run left any, else the committed conversation. */
     private suspend fun messages(chatId: ChatId): List<Message> =
@@ -75,14 +84,10 @@ internal class KoogConversationRepository(
         return checkpoint.takeIf { !it.isTombstone() }?.messageHistory
     }
 
-    private suspend fun committedMessages(chatId: ChatId): List<Message> {
-        val stored = historyRepository.load(chatId) ?: return emptyList()
-        if (stored.formatVersion != KoogHistoryCodec.FORMAT_VERSION) return emptyList()
-
-        return runCatching { historyCodec.decode(stored.payload) }
-            .onFailure { TLogger.e(TAG, "Corrupt history for ${chatId.value}", it) }
+    private suspend fun committedMessages(chatId: ChatId): List<Message> =
+        runCatching { historyCodec.toMessages(historyRepository.load(chatId)) }
+            .onFailure { TLogger.e(TAG, "Unreadable conversation for ${chatId.value}", it) }
             .getOrDefault(emptyList())
-    }
 
     private companion object {
         const val TAG = "ConversationRepository"

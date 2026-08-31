@@ -1,49 +1,63 @@
 package com.mvlog.thoon
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
+import com.mvlog.chatslist.api.ChatsListScreen
+import com.mvlog.navigation.screen.CollectedScreenFactories
+import com.mvlog.thoon.startup.rememberAppStartup
+import com.mvlog.ui.ThoonTheme
+import com.slack.circuit.backstack.rememberSaveableBackStack
+import com.slack.circuit.foundation.Circuit
+import com.slack.circuit.foundation.CircuitCompositionLocals
+import com.slack.circuit.foundation.NavigableCircuitContent
+import com.slack.circuit.foundation.rememberCircuitNavigator
 
-import thoon.shared.generated.resources.Res
-import thoon.shared.generated.resources.compose_multiplatform
-
+/**
+ * The app.
+ *
+ * Deliberately not `@Preview`-able: it installs a database context and initialises every feature,
+ * which is not something a preview should do. Preview the individual screens instead.
+ */
 @Composable
-@Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
-            }
+    rememberAppStartup()
+
+    ThoonTheme {
+        CircuitCompositionLocals(rememberThoonCircuit()) {
+            val backStack = rememberSaveableBackStack(root = ChatsListScreen)
+
+            // The two-argument form: the single-argument overload is Android-only, and `onRootPop`
+            // receives a `PopResult?`, so it cannot be written as `{ }`.
+            val navigator = rememberCircuitNavigator(backStack) { _ -> }
+
+            // No inset padding here: it would apply to every screen uniformly, which stops a top
+            // bar from painting its background behind the status bar and leaves it floating below
+            // a strip of window. Screens consume the insets they actually care about.
+            NavigableCircuitContent(
+                navigator = navigator,
+                backStack = backStack,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
+}
+
+/**
+ * Assembles the screen graph.
+ *
+ * Deliberately names no feature: the routing table is whatever the initializers registered with
+ * `ScreenFactoriesCollector`, so adding a screen means adding an initializer to `FeatureRegistry`
+ * and nothing here. One dispatcher stands in for every feature's factories and resolves by screen
+ * type, so a feature's component is not built until something navigates to it.
+ */
+@Composable
+private fun rememberThoonCircuit(): Circuit = remember {
+    val screenFactories = CollectedScreenFactories()
+
+    Circuit.Builder()
+        .addPresenterFactory(screenFactories)
+        .addUiFactory(screenFactories)
+        .build()
 }

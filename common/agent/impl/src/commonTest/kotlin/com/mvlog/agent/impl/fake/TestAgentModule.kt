@@ -3,11 +3,15 @@ package com.mvlog.agent.impl.fake
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DeleteChatUseCase
+import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
+import com.mvlog.agent.api.usecase.ObserveChatsUseCase
+import com.mvlog.agent.api.usecase.SearchChatsUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
@@ -33,11 +37,15 @@ import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.agent.impl.domain.usecase.CancelAgentRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.DeleteChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.RetryChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.ObserveChatsUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.SearchChatsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveDefaultAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ResolveAgentConfigUseCase
 import com.mvlog.agent.impl.domain.usecase.SendPromptUseCaseImpl
@@ -55,7 +63,8 @@ import com.mvlog.agent.impl.koog.ChatTimelineProjector
 import com.mvlog.agent.impl.koog.CheckpointCodec
 import com.mvlog.agent.impl.koog.KoogConversationRepository
 import com.mvlog.agent.impl.koog.KoogClientFactory
-import com.mvlog.agent.impl.koog.KoogHistoryCodec
+import com.mvlog.agent.impl.koog.KoogToolRegistryFactory
+import com.mvlog.agent.impl.koog.KoogMessageRowCodec
 import com.mvlog.agent.impl.koog.PersistentChatHistoryProvider
 import com.mvlog.agent.impl.koog.RoomPersistenceStorageProvider
 import com.mvlog.agent.impl.util.AgentClock
@@ -106,7 +115,7 @@ internal class TestAgentModule(
             historyRepository = chatHistoryRepository,
             checkpointRepository = checkpointRepository,
             metadataRepository = chatMetadataRepository,
-            historyCodec = KoogHistoryCodec(json),
+            historyCodec = KoogMessageRowCodec(json, idGenerator),
             checkpointCodec = CheckpointCodec(json),
             projector = ChatTimelineProjector(),
             clock = clock,
@@ -116,7 +125,7 @@ internal class TestAgentModule(
         get() = PersistentChatHistoryProvider(
             historyRepository = chatHistoryRepository,
             checkpointRepository = checkpointRepository,
-            historyCodec = KoogHistoryCodec(json),
+            historyCodec = KoogMessageRowCodec(json, idGenerator),
             checkpointCodec = CheckpointCodec(json),
         )
 
@@ -138,6 +147,7 @@ internal class TestAgentModule(
                 historyProvider = chatHistoryProvider,
                 persistenceStorage = persistenceStorageProvider,
                 clientFactory = KoogClientFactory(HttpClient()),
+                toolRegistryFactory = KoogToolRegistryFactory(),
                 clock = clock,
             )
         }
@@ -156,8 +166,8 @@ internal class TestAgentModule(
     override val runCoordinator: AgentRunCoordinator = AgentRunCoordinator(
         runRepository = agentRunRepository,
         conversationRepository = conversationRepository,
+        retryChat = retryChatUseCase,
         executor = agentRunExecutor,
-        idGenerator = idGenerator,
         scope = agentScope,
     )
 
@@ -178,14 +188,31 @@ internal class TestAgentModule(
             mapper = ChatStateApiMapper(),
         )
 
+    override val searchChatsUseCase: SearchChatsUseCase
+        get() = SearchChatsUseCaseImpl(chatMetadataRepository)
+
+    override val observeChatsUseCase: ObserveChatsUseCase
+        get() = ObserveChatsUseCaseImpl(chatMetadataRepository)
+
     override val createChatUseCase: CreateChatUseCase
         get() = CreateChatUseCaseImpl(chatMetadataRepository, idGenerator)
+
+    override val retryChatUseCase: RetryChatUseCase
+        get() = RetryChatUseCaseImpl(
+            conversationRepository = conversationRepository,
+            runRepository = agentRunRepository,
+            idGenerator = idGenerator,
+        )
+
+    override val deleteChatUseCase: DeleteChatUseCase
+        get() = DeleteChatUseCaseImpl(chatMetadataRepository)
 
     override val sendPromptUseCase: SendPromptUseCase
         get() = SendPromptUseCaseImpl(
             chatRepository = chatRepository,
             runRepository = agentRunRepository,
             conversationRepository = conversationRepository,
+            metadataRepository = chatMetadataRepository,
             idGenerator = idGenerator,
         )
 
