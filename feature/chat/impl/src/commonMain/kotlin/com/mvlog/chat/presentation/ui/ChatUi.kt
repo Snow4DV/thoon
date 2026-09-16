@@ -99,6 +99,7 @@ fun ChatUi(
                 initialPrompt = state.prompt,
                 onPromptChanged = { state.eventSink(ChatUiEvent.Ui.PromptChanged(it)) },
                 onSubmit = { state.eventSink(ChatUiEvent.Ui.PromptSubmitted(it)) },
+                isWorking = state.isThinking,
                 modifier = promptFieldModifier,
             )
 

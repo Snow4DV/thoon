@@ -26,6 +26,11 @@ internal class InMemoryAgentRunRepository(
             .map { runs -> runs.values.filter { it.status.isPending }.map { it.chatId }.toSet() }
             .distinctUntilChanged()
 
+    override fun observeChatsWithActiveRuns(): Flow<Set<ChatId>> =
+        store.runs
+            .map { runs -> runs.values.filter { !it.status.isTerminal }.map { it.chatId }.toSet() }
+            .distinctUntilChanged()
+
     override suspend fun enqueue(runId: AgentRunId, chatId: ChatId, prompt: String) {
         store.transaction {
             store.putRun(

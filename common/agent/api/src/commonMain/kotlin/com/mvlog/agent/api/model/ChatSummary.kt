@@ -17,4 +17,6 @@ data class ChatSummary(
     val lastMessageAt: Instant?,
     /** Last message text, for the row. */
     val lastMessagePreview: String?,
+    /** Live run state, not metadata: true while a run for this chat is queued or executing. */
+    val isWorking: Boolean,
 )

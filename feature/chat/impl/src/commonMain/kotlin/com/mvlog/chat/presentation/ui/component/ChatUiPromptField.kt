@@ -29,12 +29,15 @@ import com.composables.ui.components.IconButton
 import com.composables.ui.components.Text
 import com.composables.ui.components.TextField
 import com.composables.ui.theme.colors
+import com.composables.ui.theme.fieldShape
+import com.composables.ui.theme.shapes
 import com.composables.ui.theme.controlColor
 import com.composables.ui.theme.fieldColor
 import com.composables.ui.theme.mutedColor
 import com.composables.ui.theme.onFieldColor
 import com.composeunstyled.theme.Theme
 import com.mvlog.ui.ThoonPreview
+import com.mvlog.ui.components.workingBorder
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -48,6 +51,8 @@ fun ChatUiPromptField(
     onPromptChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
+    /** The agent is answering; the field stays usable, prompts queue behind the run. */
+    isWorking: Boolean = false,
     onSubmit: (String) -> Unit = {},
 ) {
     val textFieldState = rememberSaveable(saver = TextFieldState.Saver) { TextFieldState(initialPrompt) }
@@ -83,7 +88,9 @@ fun ChatUiPromptField(
     ) {
         TextField(
             state = textFieldState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .workingBorder(active = isWorking, shape = Theme[shapes][fieldShape]),
             enabled = !isLoading,
             lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5),
             placeholder = { Text("Ask something…", color = Theme[colors][mutedColor]) },
@@ -121,6 +128,18 @@ private fun ChatUiPromptFieldFilledPreview() {
         ChatUiPromptField(
             initialPrompt = "What is the fastest route from Moscow to Saint Petersburg?",
             onPromptChanged = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun ChatUiPromptFieldWorkingPreview() {
+    ThoonPreview {
+        ChatUiPromptField(
+            initialPrompt = "",
+            onPromptChanged = {},
+            isWorking = true,
         )
     }
 }

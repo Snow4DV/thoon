@@ -41,6 +41,8 @@ data class ChatRow(
     val label: String,
     val subtitle: String?,
     val messageSequence: Long? = null,
+    /** Not part of [key]: a row must not be recreated when its agent starts or stops. */
+    val isWorking: Boolean = false,
 ) {
     /**
      * One chat can match several times; [messageSequence] tells those rows apart, [id] is what

@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
@@ -48,11 +49,33 @@ class AgentPipelineTest {
 
         val finished = states.last()
         assertEquals(ChatExecutionState.Idle, finished.execution)
+        assertTrue(states.any { it.isWorking }, "the chat must have looked busy at some point")
+        assertTrue(!finished.isWorking, "an answered chat is no longer working")
         assertEquals(2, finished.items.size)
 
         val answer = assertIs<ChatItem.AssistantMessage>(finished.items[1])
         assertEquals("You said: hello", answer.text)
         assertTrue(!answer.isStreaming, "a finished answer must not still be marked streaming")
+    }
+
+    @Test
+    fun theChatListReportsAChatWhileItsRunIsLive() = pipelineTest(startRuntime = false) {
+        sendPrompt(chatId, "hello")
+        advanceUntilIdle()
+
+        assertTrue(
+            observeChats().first().single { it.id == chatId }.isWorking,
+            "a queued run counts as working, the same as in ChatState",
+        )
+        assertTrue(searchChats("").first().single { it.chat.id == chatId }.chat.isWorking)
+
+        startRuntime()
+        advanceUntilIdle()
+
+        assertTrue(
+            !observeChats().first().single { it.id == chatId }.isWorking,
+            "once answered the row must settle",
+        )
     }
 
     @Test
@@ -117,6 +140,9 @@ class AgentPipelineTest {
     ) {
         val sendPrompt = component.sendPromptUseCase()
         val cancelAgentRun = component.cancelAgentRunUseCase()
+        val observeChats = component.observeChatsUseCase()
+        val searchChats = component.searchChatsUseCase()
+        val startRuntime = component.startAgentRuntimeUseCase()
 
         fun advanceUntilIdle() = testScope.advanceUntilIdle()
 

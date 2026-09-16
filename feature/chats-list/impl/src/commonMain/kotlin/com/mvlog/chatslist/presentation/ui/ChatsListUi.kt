@@ -42,6 +42,7 @@ import com.mvlog.chatslist.presentation.ChatsListUiState
 import com.mvlog.chatslist.presentation.ui.component.ChatsListBottomBar
 import com.mvlog.chatslist.presentation.ui.component.ChatsSearchField
 import com.mvlog.ui.ThoonTypography
+import com.valentinilk.shimmer.shimmer
 
 @Composable
 fun ChatsListUi(
@@ -175,6 +176,7 @@ private fun ChatListRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = highlight(chat.label, query, matchStyle),
+                modifier = if (chat.isWorking) Modifier.shimmer() else Modifier,
                 style = ThoonTypography.h5,
                 singleLine = true,
                 overflow = TextOverflow.Ellipsis,

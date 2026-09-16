@@ -176,10 +176,10 @@ internal class TestAgentModule(
         )
 
     override val searchChatsUseCase: SearchChatsUseCase
-        get() = SearchChatsUseCaseImpl(chatMetadataRepository)
+        get() = SearchChatsUseCaseImpl(chatMetadataRepository, agentRunRepository)
 
     override val observeChatsUseCase: ObserveChatsUseCase
-        get() = ObserveChatsUseCaseImpl(chatMetadataRepository)
+        get() = ObserveChatsUseCaseImpl(chatMetadataRepository, agentRunRepository)
 
     override val createChatUseCase: CreateChatUseCase
         get() = CreateChatUseCaseImpl(chatMetadataRepository, idGenerator)

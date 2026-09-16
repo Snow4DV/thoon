@@ -55,21 +55,31 @@ internal class ObserveChatUseCaseImpl(
 
 internal class ObserveChatsUseCaseImpl(
     private val metadataRepository: ChatMetadataRepository,
+    private val runRepository: AgentRunRepository,
 ) : ObserveChatsUseCase {
 
     override fun invoke(): Flow<List<ChatSummary>> =
-        metadataRepository.observeAll().map { chats -> chats.map(ChatMetadata::toSummary) }
+        combine(
+            metadataRepository.observeAll(),
+            runRepository.observeChatsWithActiveRuns(),
+        ) { chats, active ->
+            chats.map { it.toSummary(isWorking = it.id in active) }
+        }
 }
 
 internal class SearchChatsUseCaseImpl(
     private val metadataRepository: ChatMetadataRepository,
+    private val runRepository: AgentRunRepository,
 ) : SearchChatsUseCase {
 
     override fun invoke(query: String): Flow<List<ChatSearchResult>> =
-        metadataRepository.search(query).map { matches ->
+        combine(
+            metadataRepository.search(query),
+            runRepository.observeChatsWithActiveRuns(),
+        ) { matches, active ->
             matches.map {
                 ChatSearchResult(
-                    chat = it.chat.toSummary(),
+                    chat = it.chat.toSummary(isWorking = it.chat.id in active),
                     snippet = it.snippet,
                     messageSequence = it.messageSequence,
                 )
@@ -120,7 +130,7 @@ internal class DeleteChatUseCaseImpl(
     override suspend fun invoke(chatId: ChatId) = metadataRepository.delete(chatId)
 }
 
-private fun ChatMetadata.toSummary(): ChatSummary = ChatSummary(
+private fun ChatMetadata.toSummary(isWorking: Boolean): ChatSummary = ChatSummary(
     id = id,
     title = title,
     configId = configId,
@@ -128,6 +138,7 @@ private fun ChatMetadata.toSummary(): ChatSummary = ChatSummary(
     updatedAt = updatedAt,
     lastMessageAt = lastMessageAt,
     lastMessagePreview = lastMessagePreview,
+    isWorking = isWorking,
 )
 
 internal class SendPromptUseCaseImpl(

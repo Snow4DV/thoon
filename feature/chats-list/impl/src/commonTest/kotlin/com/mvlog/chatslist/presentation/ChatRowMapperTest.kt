@@ -62,10 +62,17 @@ class ChatRowMapperTest {
         assertNull(result(preview = null).toRow().subtitle)
     }
 
+    @Test
+    fun aWorkingChatIsFlaggedOnItsRow() {
+        assertTrue(result(isWorking = true).toRow().isWorking)
+        assertTrue(!result(isWorking = false).toRow().isWorking)
+    }
+
     private fun result(
         title: String? = "Untitled",
         preview: String? = null,
         snippet: String? = null,
+        isWorking: Boolean = false,
     ) = ChatSearchResult(
         messageSequence = null,
         chat = ChatSummary(
@@ -76,6 +83,7 @@ class ChatRowMapperTest {
             updatedAt = Clock.System.now(),
             lastMessageAt = null,
             lastMessagePreview = preview,
+            isWorking = isWorking,
         ),
         snippet = snippet,
     )

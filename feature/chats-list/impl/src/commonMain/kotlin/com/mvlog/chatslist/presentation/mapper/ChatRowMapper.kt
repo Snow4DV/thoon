@@ -14,6 +14,7 @@ internal fun ChatSearchResult.toRow(): ChatRow = ChatRow(
         ?: "Chat ${chat.id.value.take(ID_PREFIX_LENGTH)}",
     // Snippets arrive windowed around the match; re-truncating cut the match off.
     subtitle = snippet?.oneLine(collapseOnly = true) ?: chat.lastMessagePreview?.oneLine(),
+    isWorking = chat.isWorking,
 )
 
 private fun String.oneLine(collapseOnly: Boolean = false): String? {

@@ -141,7 +141,7 @@ class ChatPresenter(
                 ),
                 isDeepLinked = screen.highlightMessageSequence != null,
                 prompt = prompt,
-                isThinking = currentState.execution is ChatExecutionState.Working,
+                isThinking = currentState.isWorking,
                 isRefreshing = false,
                 isChatOptionsMenuVisible = isChatOptionsMenuVisible,
                 chatTitle = chatTitle,

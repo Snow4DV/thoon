@@ -13,6 +13,9 @@ internal interface AgentRunRepository {
     /** Drives the coordinator: storage is the work queue, this is its notification channel. */
     fun observeChatsWithPendingRuns(): Flow<Set<ChatId>>
 
+    /** Chats with a queued or executing run; what the list shows as busy. */
+    fun observeChatsWithActiveRuns(): Flow<Set<ChatId>>
+
     /** Carries the prompt so the worker needs no reread. */
     suspend fun enqueue(runId: AgentRunId, chatId: ChatId, prompt: String)
 
