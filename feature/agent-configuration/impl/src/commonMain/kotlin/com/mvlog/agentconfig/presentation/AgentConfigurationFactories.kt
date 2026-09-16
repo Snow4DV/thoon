@@ -12,8 +12,16 @@ import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
 import com.mvlog.agentconfig.api.AgentConfigurationScreen
 import com.mvlog.agentconfig.api.ChatConfigurationScreen
-import com.mvlog.agentconfig.presentation.ui.AgentConfigEditorUi
-import com.mvlog.agentconfig.presentation.ui.SettingsUi
+import com.mvlog.agentconfig.presentation.chat.circuit.ChatConfigurationPresenter
+import com.mvlog.agentconfig.presentation.common.settings.ui.SettingsUi
+import com.mvlog.agentconfig.presentation.common.settings.ui.SettingsUiState
+import com.mvlog.agentconfig.presentation.configuration.circuit.AgentConfigurationPresenter
+import com.mvlog.agentconfig.presentation.editor.AgentConfigEditorScreen
+import com.mvlog.agentconfig.presentation.editor.circuit.AgentConfigEditorPresenter
+import com.mvlog.agentconfig.presentation.editor.ui.AgentConfigEditorUi
+import com.mvlog.agentconfig.presentation.editor.ui.AgentConfigEditorUiState
+import com.mvlog.agentconfig.presentation.list.AgentConfigListScreen
+import com.mvlog.agentconfig.presentation.list.circuit.AgentConfigListPresenter
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
@@ -21,12 +29,6 @@ import com.slack.circuit.runtime.screen.Screen
 import com.slack.circuit.runtime.ui.Ui
 import com.slack.circuit.runtime.ui.ui
 
-/**
- * Resolves every screen this feature owns.
- *
- * One factory for four screens: a Circuit factory claims whatever its `when` covers, and returning
- * null for anything else is the contract rather than a fallback.
- */
 internal class AgentConfigurationPresenterFactory(
     private val observeConfigs: ObserveAgentConfigsUseCase,
     private val getConfig: GetAgentConfigUseCase,
@@ -37,10 +39,7 @@ internal class AgentConfigurationPresenterFactory(
     private val setDefaultConfig: SetDefaultAgentConfigUseCase,
     private val observeChatConfig: ObserveChatConfigUseCase,
     private val setChatConfig: SetChatConfigUseCase,
-    /**
-     * Read when the editor is created, not when the factory is: engines are registered by
-     * initializers, and the registry is meant to be consulted every time the editor opens.
-     */
+    /** Read per editor, not per factory, so a late-registered engine shows on the next open. */
     private val localEngineProvider: LocalEngineProvider,
 ) : Presenter.Factory {
 
@@ -82,10 +81,6 @@ internal class AgentConfigurationPresenterFactory(
     }
 }
 
-/**
- * Three of the four screens share one composable, which is the point of the settings renderer: the
- * root, a section and per-chat configuration differ only in the items they carry.
- */
 internal class AgentConfigurationUiFactory : Ui.Factory {
 
     override fun create(screen: Screen, context: CircuitContext): Ui<*>? = when (screen) {

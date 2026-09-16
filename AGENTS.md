@@ -53,7 +53,8 @@ cheapest way to find out.
   all three targets, which is what makes adding them low-risk.
 
 **Git history is not a guide here.** Two commits exist and most of the tree is uncommitted, so
-`git log` tells you nothing about why code looks the way it does. The KDoc does — see Conventions.
+`git log` tells you nothing about why code looks the way it does. The docs and the nearest
+`AGENTS.md` do — see Conventions.
 
 ## Module map
 
@@ -72,7 +73,7 @@ common/
 feature/
   chat/{api,impl}                 the conversation screen
   chats-list/{api,impl}           list, search, bottom bar
-  agent-configuration/{api,impl}  model & provider settings, per-chat overrides
+  agent-configuration/{api,impl}  model & provider settings, per-chat overrides — see its AGENTS.md
   agent-tools                     file, web and date/time tools (one module — no screen)
 ```
 
@@ -90,59 +91,13 @@ performs. Everything behind them (`ChatRepository`, `ConversationRepository`, Ro
 Inside `agent/impl`: `domain/` (entities, repository interfaces, use cases) → `data/` (Room, in-memory)
 → `koog/` (everything that knows the framework) → `execution/` (the run queue).
 
-### DI — hand-rolled, no framework
+### DI, navigation, extension points, adding a feature
 
-Each module follows one template. For a feature named `Foo`, `feature/foo/impl/di/` holds six files:
-
-| File | Role |
-| --- | --- |
-| `FooComponent` | what the feature exposes |
-| `FooComponentDependencies` | what it needs, each defaulted to a holder lookup |
-| `FooModule` | the graph; `Impl(dependencies) : FooModule, FooComponentDependencies by dependencies` |
-| `FooComponentImpl` | `FooComponent` backed by the module |
-| `FooComponentHolder` | the singleton access point |
-| `FooInitializer` | registers the holder and any collectors |
-
-Dependencies are satisfied by *delegation to another module's holder*, resolved per access:
-
-```kotlin
-internal interface ChatComponentDependencies {
-    val retryChatUseCase: RetryChatUseCase
-        get() = ThoonAgentComponentHolder.get().retryChatUseCase()
-
-    class Impl : ChatComponentDependencies
-}
-
-internal interface ChatModule {
-    val screenFactory: ScreenFactory
-
-    // `by dependencies` is what lets provider bodies read as bare names.
-    class Impl(dependencies: ChatComponentDependencies) :
-        ChatModule, ChatComponentDependencies by dependencies { /* ... */ }
-}
-
-internal class ChatComponentImpl(
-    // Both defaulted — this is the test seam.
-    dependencies: ChatComponentDependencies = ChatComponentDependencies.Impl(),
-    private val module: ChatModule = ChatModule.Impl(dependencies),
-) : ChatComponent
-
-internal object ChatComponentHolder : ApiComponentHolder<ChatComponent>()
-
-// The module's only public DI type.
-class ChatInitializer : BaseInitializer(tag = TAG) {
-    override fun init() {
-        ChatComponentHolder.set { ChatComponentImpl() }
-        ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenFactory() }
-    }
-}
-```
-
-**Every DI type is `internal` except the initializer** — that is what stops another module reaching
-past the holder. Providers are `get()` properties (fresh each access) unless something must be a
-singleton — a coordinator owning live jobs, a mutex registry — which is `by lazy` with a comment
-saying why. `ApiComponentHolder.get()` caches on first call; `reset()` (tests only) clears the
-instance but keeps the provider.
+All in [`docs/architecture/FEATURES.md`](docs/architecture/FEATURES.md). The short version: DI is
+hand-rolled (six files per feature, holders resolved per access, every DI type `internal` except the
+initializer); screens are found and saved through `ScreenFactoriesCollector`, one `collect` per
+screen carrying its serializer; four collectors exist and only `AppOnCreateActionsCollector` drains.
+**A new feature is invisible until its initializer is added to `FeatureRegistry`.**
 
 ### Startup order
 
@@ -160,69 +115,6 @@ Phase 1 registers *providers* and collects; no component is built. The list with
 order-independent, the two phases are not.
 
 **A new feature is invisible until its initializer is added to `FeatureRegistry`.**
-
-### Navigation — Circuit, resolved by collector
-
-`App.kt` names no feature. `ScreenFactoriesCollector` maps a `Screen` type to a lazy factory:
-
-```kotlin
-ScreenFactoriesCollector.collect(ChatScreen.serializer()) { ChatComponentHolder.get().screenFactory() }
-```
-
-`CollectedScreenFactories` is one dispatcher registered as *both* `Presenter.Factory` and
-`Ui.Factory`. Keying by screen type means a feature's component is not built until something
-navigates to it. **Matching is by exact class** — a sealed base does not resolve, so every concrete
-screen registers itself. A miss logs `No feature registered a factory for ...` rather than crashing.
-
-**The back stack is persisted through kotlinx-serialization, on every target.** `Screen`s live in
-`feature/*/api`, are `@Serializable`, and may carry value classes — `ChatScreen.chatId` is a `ChatId`.
-The one `collect` call registers both the factory and the serializer: the serializer goes into a
-polymorphic `SerializersModule` over `CircuitSaveable`, and `CollectedScreenFactories.circuitSaver()`
-wraps it in a `SerializableCircuitSaver` that `App.kt` sets on the `Circuit`. Deriving the screen type
-from the serializer is what makes it impossible to register a screen that can be opened but not saved
-— since Circuit 0.38 an unregistered screen **fails the save** rather than being dropped, which would
-be a crash on the first configuration change.
-
-This is the hand-rolled counterpart of Slack's `@CircuitSerializable` + `@CircuitInject` codegen into
-a DI multibinding; the collector *is* the multibinding. The reflective saver was not an option: it is
-JVM-only, and iOS needs the same registration.
-
-A module that declares a `Screen` applies `kotlinSerialization`. A saved record that no longer
-restores (a renamed screen) is dropped by Circuit and logged as `Dropped a saved screen`.
-
-### Extension points
-
-Four collectors. Three are **non-draining**; one drains. Getting that wrong is a real bug class.
-
-| Collector | Module | Drains on read? |
-| --- | --- | --- |
-| `AppOnCreateActionsCollector` | `common:init` | **yes** — actions run once |
-| `AgentToolsCollector` | `common:agent:tool-api` | no — the registry is rebuilt per run |
-| `ScreenFactoriesCollector` | `common:navigation` | no |
-| `LocalEnginesCollector` | `common:agent:api` | no |
-
-Draining `AgentToolsCollector` would give the first run its tools and every later run none — which
-looks like the model forgetting its abilities mid-session, not like a DI bug.
-
-### Adding a feature
-
-1. `include(":feature:foo:api")` and `":feature:foo:impl"` in `settings.gradle.kts`.
-2. `api` module: the `Screen`(s), `@Serializable`, with `@Serializable` value-class ids from
-   `common:agent:api` where the screen carries one. Plugins: `kotlinMultiplatform`,
-   `androidMultiplatformLibrary`, `androidLint`, `kotlinSerialization`. No Compose plugins in an
-   `api` module. `api(libs.circuit.runtime)`, `api(project(":common:navigation"))`, and
-   `api(project(":common:agent:api"))` if an id appears in the constructor.
-3. `impl` module: the six DI files, a `Presenter.Factory` and a `Ui.Factory` (both returning `null`
-   for screens they do not own — that is the contract, not a fallback), and the UI.
-4. In `impl`'s `build.gradle.kts`: `api(project(":common:navigation"))` and
-   `api(project(":feature:foo:api"))` — `api` because `ScreenFactory` and the screen type appear in
-   the component's signature — then `implementation` for `:common:di`, `:common:init` and any other
-   feature's **`api`** module. Never depend on another feature's `impl`.
-5. In the initializer: `ScreenFactoriesCollector.collect(FooScreen.serializer()) { … }` for every
-   concrete screen, then add `FooInitializer()` to `FeatureRegistry`.
-
-`feature:agent-tools` is the exception to the api/impl split: it contributes tools rather than a
-screen, so it is one module and registers into `AgentToolsCollector`.
 
 ## The agent runtime
 
@@ -345,10 +237,21 @@ search query.
 
 ## Conventions
 
-**Comments explain *why*, never *what*.** This is the strongest convention in the repo and the
-easiest to violate. The KDoc carries the reasoning that git history does not: what was tried, what
-breaks if it changes, which invariant is load-bearing. Match the surrounding density — a one-line
-private helper gets nothing; a query whose `WHERE` clause carries correctness gets a paragraph.
+**Comments are the last resort, not the record.** The record is `docs/architecture/` for how the
+app is built, `docs/circuit/PRESENTER.md` for presenters, and the nearest `AGENTS.md` for decisions
+and traps. Code gets a comment only when all three hold: the reason is local to that line or type;
+it is not obvious to an experienced KMP/Compose developer; and it is not already written in a doc.
+When it is in a doc, do not link to it from code — the doc is where a reader looks first. In detail:
+
+- No KDoc whose first sentence the name already says.
+- No comment explaining a framework concept (what a factory is, why a `when` is exhaustive).
+- A reason is written once. If two files want the same reason, it belongs in a doc.
+- One to two lines. A paragraph is a doc that has not been written yet.
+- Tests: the name is the sentence and the assertion message states the consequence. A one-line
+  comment is allowed only where an assertion would otherwise look tautological.
+- Companion constants (`TAG`, `TITLE`) are never commented.
+
+`feature/agent-configuration` is the reference for what this looks like applied.
 
 - Kotlin official style, 4 spaces, ~100 column soft wrap.
 - Time is `kotlin.time.Instant`/`Clock` from the stdlib (`Clock.System` needs
@@ -370,6 +273,7 @@ private helper gets nothing; a query whose `WHERE` clause carries correctness ge
 ## Traps
 
 - **Delete-and-reinstall** after a schema change: there are no migrations by design.
+- **A comment that repeats a doc is a bug.** Delete it, then check the doc still says it.
 - `com.composables.ui.components.Text` has an `AnnotatedString` overload, but `overflow` defaults to
   `TextOverflow.Clip`, not `Ellipsis`.
 - The chat list is `reverseLayout = true` over `items.asReversed()` — visual index is
@@ -421,3 +325,7 @@ Decisions the owner has stated explicitly; do not relitigate them, and do not qu
 deliberately because the shape of the decision is not obvious from the code. Some of its prose has
 aged past the code (§4 still says no settings UI exists; one now does) — trust the code, and update
 `TODO.md` when you touch a section it describes.
+
+`docs/architecture/` explains how the app is built; `docs/circuit/PRESENTER.md` how a presenter is
+written. A feature with decisions of its own has an `AGENTS.md` in its directory — read it before
+touching that feature.

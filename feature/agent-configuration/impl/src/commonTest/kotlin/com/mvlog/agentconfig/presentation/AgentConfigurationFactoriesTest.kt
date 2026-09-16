@@ -1,25 +1,27 @@
 package com.mvlog.agentconfig.presentation
 
 import com.mvlog.agent.api.model.AgentConfigId
-import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.api.model.AgentConfigResult
+import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agentconfig.api.AgentConfigurationScreen
 import com.mvlog.agentconfig.api.ChatConfigurationScreen
+import com.mvlog.agentconfig.presentation.chat.circuit.ChatConfigurationPresenter
+import com.mvlog.agentconfig.presentation.configuration.circuit.AgentConfigurationPresenter
+import com.mvlog.agentconfig.presentation.editor.AgentConfigEditorScreen
+import com.mvlog.agentconfig.presentation.editor.circuit.AgentConfigEditorPresenter
+import com.mvlog.agentconfig.presentation.list.AgentConfigListScreen
+import com.mvlog.agentconfig.presentation.list.circuit.AgentConfigListPresenter
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.screen.Screen
-import kotlinx.coroutines.flow.flowOf
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.coroutines.flow.flowOf
 
 private data object ForeignScreen : Screen
 
-/**
- * One factory answers for four screens. What matters is that it claims exactly those and declines
- * everything else — a factory answering for a foreign screen would shadow whichever owns it.
- */
 class AgentConfigurationFactoriesTest {
 
     @Test

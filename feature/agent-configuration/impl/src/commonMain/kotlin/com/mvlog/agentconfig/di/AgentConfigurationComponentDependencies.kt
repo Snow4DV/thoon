@@ -13,11 +13,6 @@ import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
 
-/**
- * What this feature pulls from the agent subsystem.
- *
- * Per-access getters, so nothing resolves before the holder has a provider.
- */
 internal interface AgentConfigurationComponentDependencies {
 
     val observeAgentConfigsUseCase: ObserveAgentConfigsUseCase
@@ -30,10 +25,6 @@ internal interface AgentConfigurationComponentDependencies {
     val observeChatConfigUseCase: ObserveChatConfigUseCase
     val setChatConfigUseCase: SetChatConfigUseCase
 
-    /**
-     * The on-device engine registry, as a dependency rather than a global the presenter reaches
-     * for — so a test can hand the editor an engine without populating a process-wide collector.
-     */
     val localEngineProvider: LocalEngineProvider
 
     class Impl : AgentConfigurationComponentDependencies {

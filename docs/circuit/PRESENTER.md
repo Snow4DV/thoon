@@ -20,7 +20,6 @@ Sources, for when a rule needs re-checking:
 ## The shape
 
 ```kotlin
-/** One paragraph on what this screen owns and what it deliberately does not. */
 internal class FooPresenter(
     private val screen: FooScreen,               // assisted: comes from the factory
     private val navigator: Navigator,            // assisted: comes from the factory
@@ -32,44 +31,45 @@ internal class FooPresenter(
     override fun present(): FooUiState {
         val scope = rememberCoroutineScope()
 
-        // 1. Observed truth — read from storage, never copied into a local var.
+        // (1) observed truth, collected, never copied
         val foo by remember(screen.id) { observeFoo(screen.id) }.collectAsState(initial = null)
 
-        // 2. Presentational state — what only this screen knows. One retained holder whose methods
-        //    are the only transitions (see "One value, not a handful of remembers").
+        // (2) held state: one retained holder
         val editor = rememberRetained { FooStateHolder() }
 
-        // 3. One sink, one `when`, exhaustive. Each branch is one transition or one launch.
-        val eventSink: (FooUiEvent) -> Unit = { event ->
-            when (event) {
-                is FooUiEvent.Ui.DraftChanged -> editor.edit(event.value)
-                FooUiEvent.Ui.SaveClicked -> editor.saveableDraft()?.let { draft ->
-                    scope.launch {
-                        editor.busy()
-                        saveFoo(draft)
-                        navigator.pop()
-                    }
-                }
-                FooUiEvent.Ui.BackClicked -> navigator.pop()
-            }
-        }
-
-        // 4. Map held + observed to the sealed UI state, chosen last.
-        val current = foo ?: return FooUiState.Loading
+        // (3) map held + observed to the UI state
+        val current = foo ?: return FooUiState.Loading(onBack = navigator::pop)
         return when (val held = editor.value) {
             is FooState.Editing -> FooUiState.Data(
                 title = current.title,
                 draft = held.draft,
-                canSave = held.canSave(),
-                eventSink = eventSink,
+                canSave = editor.canSave(),
+                onBack = navigator::pop,
+                eventSink = { handleEvent(it, editor, scope) },
             )
+        }
+    }
+
+    // (4) handling, outside the composable
+    private fun handleEvent(event: FooUiEvent, editor: FooStateHolder, scope: CoroutineScope) {
+        when (event) {
+            is FooUiEvent.Ui.DraftChanged -> editor.edit(event.value)
+            FooUiEvent.Ui.SaveClicked -> editor.saveableDraft()?.let { draft ->
+                scope.launch {
+                    editor.busy()
+                    saveFoo(draft)
+                    navigator.pop()
+                }
+            }
         }
     }
 }
 ```
 
-Read top to bottom: observe, hold, handle, return. A presenter that cannot be read in that order is
-asking to be split (see *When it grows*).
+The numbered comments are for this page; the real presenter has none of them. Read top to bottom:
+observe, hold, return, then handle. `present()` is the composable part and stays
+short; a presenter whose `present()` cannot be read in that order is asking to be split (see *When
+it grows*).
 
 ## Rules
 
@@ -83,9 +83,9 @@ replacing what the user is halfway through typing would be worse than showing a 
 flow dependency would invite exactly that. The seed lands through a transition (`loaded`) that is a
 no-op once a draft exists, so the effect can safely run again after rotation.
 
-`ChatPresenter`'s KDoc is the canonical statement of this rule. `ChatConfigurationPresenter` shows
-the corollary: derive `followsDefault` from two observed values rather than holding a flag that has
-to be kept in sync by hand.
+`ChatPresenter` is the canonical example (conversation content comes from storage; only the draft
+prompt and expansion set are held). `ChatConfigurationPresenter` shows the corollary: derive
+`followsDefault` from two observed values rather than holding a flag that has to be kept in sync.
 
 ### One value, not a handful of remembers
 
@@ -93,14 +93,12 @@ What the presenter holds is **one retained value of its own sealed type**, in it
 small `@Stable` **holder** that owns that value and is the only thing allowed to change it:
 
 ```kotlin
-// Plain data. No behaviour.
 internal sealed interface FooState {
     data object Loading : FooState
     data class Missing(val id: FooId) : FooState
     data class Editing(val draft: String, val error: String? = null, val isBusy: Boolean = false) : FooState
 }
 
-// Every transition, and nothing else, lives here.
 @Stable
 internal class FooStateHolder(id: FooId?) {
     var value: FooState by mutableStateOf(if (id == null) FooState.Editing("") else FooState.Loading)
@@ -111,7 +109,7 @@ internal class FooStateHolder(id: FooId?) {
         this.value = current.copy(draft = value, error = null)     // an edit clears its rejection
     }
     fun busy() { value = (value as? FooState.Editing)?.copy(isBusy = true) ?: return }
-    // ...one method per transition; no general-purpose setter
+    // one method per transition; no setter
 }
 ```
 
@@ -194,6 +192,20 @@ only meant something while the draft was null.
 A screen with *nothing* to load may use a single data class; the settings renderer's
 `SettingsUiState` is one.
 
+### Event handling is a plain function, not a lambda in `present()`
+
+The sink is `{ handleEvent(it, editor, scope) }` and `handleEvent` is a private, non-composable
+function that takes the holder and the coroutine scope as parameters. This is Circuit's *Scaling
+Presenters* Pattern 1 applied from the start rather than after the fact, for two reasons:
+
+- `present()` then contains only what is composable — observing, holding, mapping — and reads in
+  one screen. The handling, usually the longest part, is read on its own without Compose in the way.
+- Passing the holder and scope in, rather than closing over composable locals, keeps the function
+  free of composition state. It can be called, and reasoned about, like any other method.
+
+Do not extract further than this at the editor's size. One `handleEvent` with one exhaustive `when`
+is the shape; a `when` nested inside a branch is the signal to look at the event hierarchy instead.
+
 ### Events are intents, not payloads
 
 An event names what the user did — `NameChanged(value)`, `KindSelected(kind)`, `SaveClicked` — and
@@ -243,13 +255,37 @@ has a `*FactoriesTest` pinning this.
 `Presenter.present` is `@ComposableTarget("presenter")`. No composables from `compose.ui` or
 `compose.foundation` are called in a presenter, only `compose.runtime`.
 
+## Where the files go
+
+One package per screen under `presentation/`, and inside it two packages that must not depend on
+each other the wrong way round:
+
+```
+presentation/
+  FooFactories.kt            claims every screen the feature owns
+  common/                    anything two screens share, in named sub-packages (common/settings/)
+  editor/                    every other child of presentation/ is a screen
+    EditorScreen.kt          the navigation key, if it is internal to the feature
+    circuit/                 EditorPresenter, EditorState (held), EditorStateHolder
+    ui/                      EditorUi, EditorUiState (+ events, sub-states), mapper/, component/
+```
+
+`circuit/` depends on `ui/` — the presenter builds the `UiState` and reads the event types. `ui/`
+never depends on `circuit/`: a composable knows its state and its events and nothing about how they
+are produced. Mappers between domain and form live under `ui/mapper/` because they define the shape
+the UI renders, and the presenter is merely their caller. A pure function that builds part of a
+`UiState` (a list of rows) sits in `circuit/` beside the presenter that calls it, since it is
+presentation logic, not drawing.
+
+Tests mirror the packages exactly. `feature/agent-configuration/impl` is the reference.
+
 ## When it grows
 
 Circuit's *Scaling Presenters* guide, in order of reach:
 
-1. **Decompose** — pull observation into private `@Composable observeX()` functions and event
-   handling into a private `handleEvent(event)`. `present()` becomes a coordinator. Do this when
-   `present()` no longer reads top to bottom.
+1. **Decompose** — pull observation into private `@Composable observeX()` functions. Event handling
+   is already out of `present()` (see *Event handling is a plain function*). Do this when
+   `present()` still does not read top to bottom.
 2. **State holders** — a `@Stable` class owning a field's value, error and validation, created with
    `rememberRetained`. Do this when a form has several fields that each validate.
 3. **StateProducer** — a class with a `@Composable produce(): X`, injected into presenters, never a
@@ -285,10 +321,13 @@ Before calling a presenter done:
 - [ ] No flag whose meaning depends on another flag, and no two nullables that are never both set:
       nest the first (`existing: Existing?`), seal the second (`rejection: Rejection?`).
 - [ ] Events are intents; the UI computes nothing it sends back.
+- [ ] Event handling is a private non-composable `handleEvent(event, holder, scope)`; the sink in
+      `present()` only points at it.
 - [ ] Every launched action that writes has an in-flight guard feeding an `enabled` flag.
 - [ ] Errors are typed and land under their field, or in the banner, as one `Rejection?`; editing
       clears it.
 - [ ] No global lookups inside `present()`; every collaborator is a constructor parameter.
 - [ ] The factory declines foreign screens and a test pins it.
 - [ ] A `presenter.test {}` covers the load, the happy path and the rejection path.
-- [ ] KDoc on the class says what the screen owns and what it deliberately leaves to storage.
+- [ ] No KDoc restating this document or the feature's `AGENTS.md`; a comment survives only for a
+      local, non-obvious reason (see the comment rule in the root `AGENTS.md`).
