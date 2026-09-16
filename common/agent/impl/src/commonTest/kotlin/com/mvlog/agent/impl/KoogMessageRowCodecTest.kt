@@ -15,17 +15,6 @@ import kotlin.test.assertNull
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-/**
- * The test the normalised design rests on.
- *
- * Conversations are no longer one blob; they are turns and parts in rows, and the framework must get
- * back exactly what it gave us — same order, same parts, same metadata. Fidelity of a part's
- * *contents* is the serialiser's job, so what this pins is the part we own: grouping, ordering, and
- * roles. A mistake here does not crash; it hands the model a subtly different conversation.
- *
- * The shapes below are the four that actually occur, taken from a real conversation:
- * `User[Text]`, `Assistant[Reasoning, Text]`, `Assistant[Reasoning, Call]`, `User[Result]`.
- */
 @OptIn(ExperimentalTime::class)
 class KoogMessageRowCodecTest {
 
@@ -37,6 +26,7 @@ class KoogMessageRowCodecTest {
 
     private val now = Clock.System.now()
 
+    // The four turn shapes seen in a real conversation.
     private val conversation = listOf(
         Message.System(
             parts = listOf(MessagePart.Text("You are Thoon.")),
@@ -79,8 +69,6 @@ class KoogMessageRowCodecTest {
 
     @Test
     fun partOrderInsideATurnIsPreserved() {
-        // Reasoning precedes the answer it produced. Reordering would not fail anything loudly, it
-        // would just change what the model reads back.
         val rebuilt = codec.toMessages(codec.toRows(conversation))
         val kinds = rebuilt[2].parts.map { it::class.simpleName }
 
@@ -96,8 +84,6 @@ class KoogMessageRowCodecTest {
 
     @Test
     fun onlyTextPartsCarryASearchableBody() {
-        // The whole reason parts are rows: a search filters on this column, so reasoning and tool
-        // output must never populate it. Otherwise searching finds what the model merely thought.
         val parts = codec.toRows(conversation).flatMap { it.parts }
 
         parts.filter { it.kind == StoredPartKind.Text }.forEach { assertEquals(true, it.text != null) }
@@ -115,8 +101,6 @@ class KoogMessageRowCodecTest {
 
     @Test
     fun rolesAreRecordedSoSearchCanExcludeTheSystemPrompt() {
-        // The system message is a Text part too. Without a role to filter on, every chat would match
-        // any word in the system prompt.
         assertEquals(
             listOf(StoredRole.System, StoredRole.User, StoredRole.Assistant, StoredRole.Assistant, StoredRole.User),
             codec.toRows(conversation).map { it.role },

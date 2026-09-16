@@ -1,11 +1,5 @@
 package com.mvlog.agent.api.model
 
-/**
- * Why a configuration was rejected.
- *
- * Typed rather than a message string so a settings screen can attach the failure to the field that
- * caused it and localise the text.
- */
 sealed interface AgentConfigError {
 
     data object BlankName : AgentConfigError
@@ -14,7 +8,7 @@ sealed interface AgentConfigError {
 
     data object MissingApiKey : AgentConfigError
 
-    /** Only for protocols with no usable default endpoint, where a blank URL cannot be filled in. */
+    /** Only for protocols with no default endpoint (Ollama). */
     data object MissingBaseUrl : AgentConfigError
 
     data object BlankEngineId : AgentConfigError

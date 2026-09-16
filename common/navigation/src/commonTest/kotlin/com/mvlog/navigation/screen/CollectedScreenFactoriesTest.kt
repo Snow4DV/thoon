@@ -14,13 +14,6 @@ private data object OwnedScreen : Screen
 
 private data object OrphanScreen : Screen
 
-/**
- * The dispatcher is what Circuit actually holds, so this covers the seam between a framework that
- * scans a flat list and a registry that looks up by type.
- *
- * Asserted by which factory got asked rather than by what came back: building a real `Presenter`
- * needs a composition, and routing is the only thing this class does.
- */
 class CollectedScreenFactoriesTest {
 
     private val factories = CollectedScreenFactories()
@@ -46,8 +39,6 @@ class CollectedScreenFactoriesTest {
     fun aScreenNobodyRegisteredResolvesToNullWithoutAskingAnyone() {
         registerOwnedScreen()
 
-        // Circuit falls back to `onUnavailableContent` on null. Throwing here would turn a feature
-        // that forgot to register into a crash the moment someone navigated.
         assertNull(factories.create(OrphanScreen, Navigator.NoOp, CircuitContext.EMPTY))
         assertNull(factories.create(OrphanScreen, CircuitContext.EMPTY))
 
@@ -55,6 +46,8 @@ class CollectedScreenFactoriesTest {
         assertNull(uiAskedFor)
     }
 
+    // Records which factory was asked rather than what came back: a real Presenter needs a
+    // composition.
     private fun registerOwnedScreen() {
         ScreenFactoriesCollector.collect(OwnedScreen.serializer()) {
             ScreenFactory(

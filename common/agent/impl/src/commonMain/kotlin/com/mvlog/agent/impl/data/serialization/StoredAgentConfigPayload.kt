@@ -3,12 +3,6 @@ package com.mvlog.agent.impl.data.serialization
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Protocol-specific half of a stored configuration, kept as JSON in one column.
- *
- * Mirrors the chat payload approach: the discriminator is also written to its own
- * `kind` column so configurations can be queried by protocol without parsing every row.
- */
 @Serializable
 internal sealed interface StoredAgentConfigPayload {
 
@@ -40,7 +34,7 @@ internal sealed interface StoredAgentConfigPayload {
     ) : StoredAgentConfigPayload
 }
 
-/** Persisted protocol discriminator, mirrored into `agent_config.kind`. */
+/** Must equal the @SerialName values above. */
 internal object AgentConfigKind {
     const val OPENAI_COMPATIBLE = "openai_compatible"
     const val ANTHROPIC = "anthropic"

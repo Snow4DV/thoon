@@ -6,10 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * A search result has to show *why* it is a result. Taking the head of a long reply does not — the
- * match can be five hundred characters down and never appear, which is the bug these pin.
- */
 class SearchSnippetTest {
 
     @Test
@@ -25,7 +21,6 @@ class SearchSnippetTest {
 
     @Test
     fun amatchAtTheEndIsNotCutOff() {
-        // The window has to be pulled back from the end rather than centred past it.
         val snippet = snippetAround("z".repeat(300) + " finalword", "finalword")
 
         assertTrue(snippet.contains("finalword"), "was: $snippet")
@@ -46,8 +41,6 @@ class SearchSnippetTest {
 
     @Test
     fun amatchLongerThanTheWindowSurvivesIntact() {
-        // The end is measured from the match, not from the window, or a long query would be clipped
-        // by the very snippet meant to show it.
         val query = "q".repeat(120)
 
         assertTrue(snippetAround("lead $query trail", query).contains(query))
@@ -55,7 +48,6 @@ class SearchSnippetTest {
 
     @Test
     fun whitespaceIsCollapsedBeforeTheMatchIsLocated() {
-        // Folding afterwards would shift every offset measured against the unfolded text.
         val snippet = snippetAround("first\n\n   second   target", "target")
 
         assertEquals("first second target", snippet)
@@ -63,14 +55,12 @@ class SearchSnippetTest {
 
     @Test
     fun caseFoldsBeyondAscii() {
-        // The whole reason `textLower` is written in Kotlin: SQLite folds ASCII only.
         assertTrue(snippetAround("здесь Привет мир", "привет").contains("Привет"))
     }
 
     @Test
     fun anUnfindableMatchFallsBackToTheHead() {
-        // The database matched on a fold this locator cannot reproduce. A head is a poor snippet;
-        // a crash or an empty row is worse.
+        // SQL matched on a fold this locator cannot reproduce; a head beats a crash or empty row.
         val snippet = snippetAround("a".repeat(300), "nothing here")
 
         assertTrue(snippet.endsWith("…"))
@@ -79,7 +69,6 @@ class SearchSnippetTest {
 
     @Test
     fun likeWildcardsAreNeutralised() {
-        // Unescaped, a query of "50%" matches every message in the database.
         assertEquals("50\\%", escapeLike("50%"))
         assertEquals("a\\_b", escapeLike("a_b"))
         // The backslash goes first, or escaping the others would double-escape it.

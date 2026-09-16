@@ -77,8 +77,7 @@ internal class AgentConfigMapper(
             apiKey = draft.apiKey.trim(),
         )
 
-        // Trimmed but not collapsed to null: this endpoint is required, and validation has
-        // already rejected a blank one.
+        // Required, so never collapsed to null like the optional URLs above.
         is AgentConfigDraft.Ollama -> StoredAgentConfigPayload.Ollama(
             baseUrl = draft.baseUrl.trim(),
         )

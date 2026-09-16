@@ -50,7 +50,6 @@ internal class RoomCheckpointRepository(
     )
 
     private companion object {
-        /** A run commits and clears its journal; this only bounds an unusually long single run. */
         const val DEFAULT_RETAIN = 10
     }
 }

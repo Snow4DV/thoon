@@ -8,14 +8,6 @@ import com.mvlog.agent.impl.domain.entity.conversationDiff
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Whether a commit may append or must rewrite.
- *
- * The framework hands over the whole conversation every turn, so appending is the difference between
- * writing two rows and rewriting every row a chat has ever had. It is only sound while a
- * conversation grows at its end — and the failure when it is not is silent, so the check that
- * detects it is worth pinning.
- */
 class ConversationDiffTest {
 
     @Test
@@ -48,8 +40,7 @@ class ConversationDiffTest {
 
     @Test
     fun aShorterConversationRewrites() {
-        // What a windowing history preprocessor would produce. Appending onto this would leave
-        // storage holding turns the conversation no longer contains.
+        // What a windowing preprocessor would hand over.
         assertEquals(
             ConversationDiff.Rewrite,
             conversationDiff(incoming = conversation(1), storedCount = 3, boundary = boundary(2)),
@@ -58,7 +49,6 @@ class ConversationDiffTest {
 
     @Test
     fun aDifferentConversationOfTheSameLengthRewrites() {
-        // Long enough is not the same as extending: the turn at the boundary is a different turn.
         assertEquals(
             ConversationDiff.Rewrite,
             conversationDiff(

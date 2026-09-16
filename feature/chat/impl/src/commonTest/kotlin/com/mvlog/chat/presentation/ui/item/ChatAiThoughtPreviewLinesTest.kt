@@ -10,8 +10,6 @@ class ChatAiThoughtPreviewLinesTest {
 
     @Test
     fun previewShowsTheMostRecentLines() {
-        // The tail, not the head: the last lines are the ones still changing, which is what makes
-        // the collapsed header read as progress rather than as a frozen label.
         assertEquals(
             listOf("second", "third", "fourth"),
             thoughtPreviewLines(thoughts, isThinking = true, isExpanded = false),

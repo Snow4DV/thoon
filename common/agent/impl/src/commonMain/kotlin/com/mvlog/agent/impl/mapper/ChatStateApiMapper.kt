@@ -10,12 +10,6 @@ import com.mvlog.agent.impl.domain.entity.AgentRunStatus
 import com.mvlog.agent.impl.domain.entity.ChatEntry
 import com.mvlog.agent.impl.domain.entity.ToolCallStatus
 
-/**
- * Collapses the internal timeline and run list into the single contract model features observe.
- *
- * The run list never crosses this boundary: consumers get one derived execution state instead of
- * having to reconstruct the queue themselves.
- */
 internal class ChatStateApiMapper {
 
     fun map(chatId: ChatId, entries: List<ChatEntry>, runs: List<AgentRun>): ChatState =
@@ -71,7 +65,6 @@ internal class ChatStateApiMapper {
             ?: runs.firstOrNull { it.status == AgentRunStatus.Queued }
 
         if (active != null) {
-            // Prompts accepted while another run holds the chat, excluding the one being reported.
             val queued = runs.count { it.status == AgentRunStatus.Queued && it.id != active.id }
             return ChatExecutionState.Working(
                 runId = active.id,
@@ -83,8 +76,7 @@ internal class ChatStateApiMapper {
             )
         }
 
-        // Only the most recent run can still be worth surfacing as a failure; older ones have
-        // already been superseded by a completed run.
+        // Only the latest run's failure is surfaced; anything older was superseded by a later run.
         val latest = runs.maxByOrNull { it.createdAt } ?: return ChatExecutionState.Idle
         return when (latest.status) {
             AgentRunStatus.Failed,

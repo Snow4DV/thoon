@@ -41,16 +41,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 
-/**
- * The chat prompt input.
- *
- * [TextFieldState] is owned locally (seeded once from [initialPrompt]) rather than driven by
- * [onPromptChanged]'s caller, so every keystroke renders immediately regardless of how the
- * caller handles the callback. If [onPromptChanged] routed straight through to an eventSink
- * consumed asynchronously by a Presenter, waiting on that round trip to reflect the next
- * keystroke would visibly lag or drop input under load. Instead, [onPromptChanged] is only
- * notified as a debounced side effect off the input path, so it's free to be slow.
- */
 @OptIn(FlowPreview::class)
 @Composable
 fun ChatUiPromptField(
@@ -71,14 +61,12 @@ fun ChatUiPromptField(
             .collectLatest { latestOnPromptChanged(it) }
     }
 
-    // Derived so the button's enabled state recomposes when blankness flips, not on every keystroke.
     val canSend by remember(textFieldState) {
         derivedStateOf { textFieldState.text.isNotBlank() }
     }
 
-    // Read straight from the field: the debounced [onPromptChanged] may not have fired yet, so
-    // anything the caller holds can be up to 200ms stale. Shared by the button and the IME action
-    // so the two cannot drift apart.
+    // Read from the field: the debounced callback can be behind. Shared by the button and the IME
+    // action.
     fun submit() {
         val prompt = textFieldState.text.toString()
         if (prompt.isNotBlank()) {
@@ -90,8 +78,7 @@ fun ChatUiPromptField(
     Row(
         modifier = modifier.fillMaxWidth().let { if (isLoading) it.shimmer() else it },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        // Beside the field rather than in its `trailing` slot: that slot aligns to the top for a
-        // multi-line field, which would strand the button above a prompt as it grows.
+        // Not in trailing: that slot top-aligns in a multi-line field.
         verticalAlignment = Alignment.Bottom,
     ) {
         TextField(

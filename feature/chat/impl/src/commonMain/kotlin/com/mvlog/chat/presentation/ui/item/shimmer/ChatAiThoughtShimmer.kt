@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.sp
 import com.mvlog.ui.ThoonPreview
 import com.mvlog.ui.shimmer.TextShimmer
 
-/** Mirrors [com.mvlog.chat.presentation.ui.item.ChatAiThought]'s icon + label header row. */
 @Composable
 fun ChatAiThoughtShimmer(modifier: Modifier = Modifier) {
     Row(

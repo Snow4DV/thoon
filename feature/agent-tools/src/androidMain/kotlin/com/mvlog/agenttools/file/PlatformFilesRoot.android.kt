@@ -4,14 +4,7 @@ import android.content.Context
 import okio.Path
 import okio.Path.Companion.toPath
 
-/**
- * Holds the application [Context] needed to locate app-private storage.
- *
- * A second context holder alongside `AndroidDatabaseContext` — a wart, kept rather than removed,
- * because the alternative is a dependency from the database module to this one purely to share a
- * field. Both are installed from the same place in `AppStartup.android.kt`, so the ordering stays
- * visible in one file.
- */
+/** Installed from `AppStartup.android.kt`, beside `AndroidDatabaseContext`. */
 object AndroidFilesContext {
 
     private var applicationContext: Context? = null

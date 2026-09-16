@@ -13,9 +13,6 @@ import com.mvlog.agenttools.web.FetchUrlTool
 import com.mvlog.agenttools.web.WebSearchTool
 import okio.FileSystem
 
-/**
- * Everything this feature builds for itself.
- */
 internal interface AgentToolsModule {
 
     val agentToolProvider: AgentToolProvider
@@ -24,11 +21,7 @@ internal interface AgentToolsModule {
         dependencies: AgentToolsComponentDependencies,
     ) : AgentToolsModule, AgentToolsComponentDependencies by dependencies {
 
-        /**
-         * Built once, not per access: [platformFilesRoot] reads a platform handle that must be
-         * installed first, and resolving it repeatedly would ask the same question on every tool
-         * call.
-         */
+        /** `by lazy`: resolve the platform files root once, not per tool call. */
         private val fileStore: ChatFileStore by lazy {
             OkioChatFileStore(
                 fileSystem = FileSystem.SYSTEM,
@@ -37,10 +30,6 @@ internal interface AgentToolsModule {
             )
         }
 
-        /**
-         * Lazy by construction: the provider is invoked when a run starts, so nothing here touches
-         * a filesystem or an HTTP client during process launch.
-         */
         override val agentToolProvider: AgentToolProvider
             get() = AgentToolProvider {
                 listOf(

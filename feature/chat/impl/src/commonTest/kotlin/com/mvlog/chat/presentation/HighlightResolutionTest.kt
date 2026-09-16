@@ -7,19 +7,11 @@ import kotlin.test.assertNull
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-/**
- * Which rendered item a search result meant.
- *
- * One stored turn becomes several items, so the sequence alone does not name one — and the order
- * they project in is not the order that matters here.
- */
 @OptIn(ExperimentalTime::class)
 class HighlightResolutionTest {
 
     @Test
     fun themessageWinsOverTheReasoningItSharesAturnWith() {
-        // Reasoning projects first, so taking the first match would tint a collapsed thought bubble
-        // rather than the text that was actually searched.
         val id = resolveHighlightedItemId(
             items = listOf(reasoning("thought", 4L), assistant("reply", 4L)),
             messageSequence = 4L,
@@ -35,20 +27,16 @@ class HighlightResolutionTest {
 
     @Test
     fun anItemWithNoMessageOfItsOwnStillResolves() {
-        // Nothing but reasoning carries this turn. Showing the hit beats ignoring it.
         assertEquals("thought", resolveHighlightedItemId(listOf(reasoning("thought", 7L)), 7L))
     }
 
     @Test
     fun asequenceNothingCarriesResolvesToNothing() {
-        // History compression, or a timeline restored from a checkpoint whose indices moved. The
-        // screen opens normally rather than reporting an error at someone.
         assertNull(resolveHighlightedItemId(listOf(assistant("reply", 4L)), 99L))
     }
 
     @Test
     fun noSequenceMeansNoHighlight() {
-        // The ordinary case: the chat was opened from the list, not from a search result.
         assertNull(resolveHighlightedItemId(listOf(assistant("reply", 4L)), null))
     }
 

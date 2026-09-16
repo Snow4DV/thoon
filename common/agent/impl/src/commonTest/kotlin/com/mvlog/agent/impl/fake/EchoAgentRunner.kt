@@ -8,12 +8,6 @@ import com.mvlog.agent.impl.execution.AgentRunner
 import com.mvlog.agent.impl.execution.AgentRunnerFactory
 import kotlinx.coroutines.delay
 
-/**
- * Streams the prompt back in chunks, so pipeline behaviour — queueing, ordering, streaming updates,
- * cancellation — can be exercised without a network or an API key.
- *
- * Test-only by design: shipping this would let a missing configuration look like a working agent.
- */
 internal class EchoAgentRunner(
     private val chatRepository: ChatRepository,
 ) : AgentRunner {
@@ -43,7 +37,6 @@ internal class EchoAgentRunner(
     }
 }
 
-/** Serves every run with [EchoAgentRunner], whatever the configuration. */
 internal class EchoAgentRunnerFactory(
     private val chatRepository: ChatRepository,
 ) : AgentRunnerFactory {

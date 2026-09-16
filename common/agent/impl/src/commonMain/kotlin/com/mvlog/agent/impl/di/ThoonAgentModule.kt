@@ -119,17 +119,13 @@ internal interface ThoonAgentModule {
 
         private val checkpointCodec: CheckpointCodec get() = CheckpointCodec(json)
 
-        /**
-         * Backs the projections below. Stored, because those projections *are* its state — a fresh
-         * instance per access would hand back an empty conversation.
-         */
+        // Stored: the in-memory repositories below are views over it; a fresh one per access would
+        // be empty.
         private val inMemoryStore: InMemoryAgentStore = InMemoryAgentStore()
 
-        /** The conversation as rendered. Rebuilt from durable state; nothing here outlives the process. */
         override val chatRepository: ChatRepository =
             InMemoryChatRepository(inMemoryStore, clock, idGenerator)
 
-        /** The work queue. Recovery comes from checkpoints, not from these rows. */
         override val agentRunRepository: AgentRunRepository =
             InMemoryAgentRunRepository(inMemoryStore, clock)
 
@@ -188,10 +184,7 @@ internal interface ThoonAgentModule {
                 clock = clock,
             )
 
-        /**
-         * Stored: it holds one mutex per chat, and that map is the guarantee that two runs on the
-         * same chat never overlap. Separate registries would silently lose it.
-         */
+        // Stored: two registries would hand two runs on one chat two different mutexes.
         private val chatRunMutexRegistry: ChatRunMutexRegistry = ChatRunMutexRegistry()
 
         private val agentRunExecutor: AgentRunExecutor
@@ -203,10 +196,7 @@ internal interface ThoonAgentModule {
                 mutexes = chatRunMutexRegistry,
             )
 
-        /**
-         * Stored: it owns the live per-chat workers and their cancellable jobs, so cancelling a run
-         * has to reach the same instance that started it.
-         */
+        // by lazy: cancelRunning must reach the instance that owns the jobs.
         override val runCoordinator: AgentRunCoordinator by lazy {
             AgentRunCoordinator(
                 runRepository = agentRunRepository,

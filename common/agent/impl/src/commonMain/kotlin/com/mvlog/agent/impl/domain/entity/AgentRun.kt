@@ -9,7 +9,7 @@ internal data class AgentRun(
     val id: AgentRunId,
     val chatId: ChatId,
     val prompt: String,
-    /** Recorded when the run starts; null until then, and for runs that never resolved a config. */
+    /** Null until markRunning, and forever for a run that never resolved a config. */
     val configId: AgentConfigId?,
     val status: AgentRunStatus,
     val createdAt: Instant,

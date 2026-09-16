@@ -18,22 +18,9 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * Works around Koog's Ollama client dropping tools when it streams.
- *
- * **Delete this file when Koog forwards tools on its streaming path.** `OllamaClient.execute`
- * builds its request with `tools = ollamaTools`, but `OllamaClient.executeStreaming` (1.1.1
- * `OllamaClient.kt:303`, unchanged in 1.2.0) omits the field entirely — so a streaming run tells the
- * model about no tools at all and it simply answers without them. Nothing errors; the tools are
- * just never mentioned.
- *
- * The only channel the delegate does forward is `params.additionalProperties`, which
- * `OllamaChatRequestDTOSerializer` (an `AdditionalPropertiesFlatteningSerializer`) merges into the
- * request root, skipping any key already present. On the streaming path `tools` is absent, so the
- * injected one survives; on the non-streaming path the real field wins and nothing is sent twice.
- *
- * A decorator, following Koog's own `RetryingLLMClient`, so the workaround stays at the client
- * boundary: `KoogTarget`, the runner, the tool registry and the loop never learn that one provider
- * needs special handling.
+ * Koog's OllamaClient.executeStreaming omits tools from the request; re-injected via
+ * params.additionalProperties, the one field the delegate flattens into the request root. Delete
+ * when fixed upstream.
  */
 internal class ToolForwardingOllamaClient(
     private val delegate: LLMClient,
@@ -71,11 +58,8 @@ internal class ToolForwardingOllamaClient(
     override fun close() = delegate.close()
 
     /**
-     * Restates [tools] in Ollama's request shape under a key the delegate will pass through.
-     *
-     * Reuses the delegate's own schema generator rather than hand-rolling JSON Schema, so the
-     * parameters the model sees are exactly the ones it would have seen had the field not been
-     * dropped.
+     * Uses Koog's own OllamaToolDescriptorSchemaGenerator, so the schema matches the non-streaming
+     * path.
      */
     private fun Prompt.withTools(tools: List<ToolDescriptor>): Prompt {
         if (tools.isEmpty()) return this
@@ -84,8 +68,7 @@ internal class ToolForwardingOllamaClient(
         val existing = params.additionalProperties.orEmpty()
         val merged: Map<String, kotlinx.serialization.json.JsonElement> = existing + (TOOLS_KEY to encoded)
 
-        // OllamaParams carries `think`, which the factory sets; copying through the existing params
-        // where possible keeps that intact rather than silently resetting it.
+        // copy when already OllamaParams, or think set by the factory is lost.
         val newParams = when (val current = params) {
             is OllamaParams -> current.copy(additionalProperties = merged)
             else -> OllamaParams(

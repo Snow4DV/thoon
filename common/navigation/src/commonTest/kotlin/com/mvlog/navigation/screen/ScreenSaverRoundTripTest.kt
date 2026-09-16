@@ -9,6 +9,7 @@ import com.slack.circuit.runtime.ui.Ui
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.Serializable
@@ -19,15 +20,6 @@ private data class SavedScreen(val id: String, val position: Long? = null) : Scr
 
 private data object NeverRegisteredScreen : Screen
 
-/**
- * The half of persistence this module owns: that registering a screen makes it a known subtype of
- * [CircuitSaveable], which is the base type Circuit's saver encodes against.
- *
- * Driven through kotlinx JSON rather than the saver's own `save`, because that writes into
- * `android.os.Bundle`, a stub in host tests. The polymorphic module is the same object either way,
- * so what is proven here is the registration; the Bundle layer is androidx's and is checked on the
- * emulator by killing the process with a chat open.
- */
 class ScreenSaverRoundTripTest {
 
     @AfterTest
@@ -46,11 +38,13 @@ class ScreenSaverRoundTripTest {
     }
 
     @Test
-    fun anUnregisteredScreenIsRefusedRatherThanSavedBlind() {
-        val saver = CollectedScreenFactories().circuitSaver()
+    fun anUnregisteredScreenIsUnknownToTheSaver() {
+        ScreenFactoriesCollector.collect(SavedScreen.serializer()) { noOpFactory() }
+        val module = ScreenFactoriesCollector.serializersModule()
 
+        assertNotNull(module.getPolymorphic(CircuitSaveable::class, SavedScreen("x")))
         assertNull(
-            runCatching { saver.save(NeverRegisteredScreen) }.getOrNull(),
+            module.getPolymorphic(CircuitSaveable::class, NeverRegisteredScreen),
             "a screen nobody registered must not be persisted in a shape nothing can restore",
         )
     }

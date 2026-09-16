@@ -19,11 +19,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
-/**
- * The factories are how the framework finds this screen at all, so what matters is that they claim
- * exactly their own screen and decline everything else — a factory that answered for a foreign
- * screen would shadow whichever one actually owns it.
- */
 class ChatFactoriesTest {
 
     private data object OtherScreen : Screen
@@ -66,10 +61,6 @@ class ChatFactoriesTest {
         )
     }
 
-    /**
-     * A screen that already names a chat must never mint another one — that was the behaviour that
-     * made the screen unusable for anything but a throwaway conversation.
-     */
     @Test
     fun anExistingChatIsNotRecreated() {
         var created = 0

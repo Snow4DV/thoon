@@ -29,8 +29,8 @@ internal class RoomChatHistoryRepository(
         return messages.mapNotNull { message ->
             val role = StoredRole.of(message.role)
             if (role == null) {
-                // A role this build does not recognise means the conversation cannot be replayed
-                // faithfully. Skipping the turn would quietly change what the model sees.
+                // Drop the whole history, not the turn: a partial replay silently changes what the
+                // model sees.
                 TLogger.e(TAG, "Unknown role '${message.role}' in ${chatId.value}; dropping history")
                 return emptyList()
             }
@@ -45,12 +45,6 @@ internal class RoomChatHistoryRepository(
         }
     }
 
-    /**
-     * Appends what is new, or rewrites when the incoming conversation no longer extends storage.
-     *
-     * The decision itself is [conversationDiff], which is a pure function with its own tests — this
-     * only supplies it with what storage currently holds and acts on the answer.
-     */
     override suspend fun commit(chatId: ChatId, messages: List<StoredMessage>) {
         val boundary = dao.lastMessage(chatId.value)?.let { last ->
             StoredRole.of(last.role)?.let { role ->
@@ -117,8 +111,6 @@ internal class RoomChatHistoryRepository(
         sequence = sequence,
         kind = kind.stored,
         text = text,
-        // Lowercased here rather than in SQL: SQLite folds case for ASCII only, so a query for
-        // 'привет' would never find 'Привет'. Kotlin's lowercase() is Unicode-aware.
         textLower = text?.lowercase(),
         toolName = toolName,
         payloadJson = payloadJson,

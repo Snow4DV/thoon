@@ -27,13 +27,6 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/**
- * Holds only what is genuinely presentational — the draft prompt and which items are expanded.
- *
- * Conversation content and progress come from storage rather than from this presenter's lifetime.
- * Leaving the screen mid-answer therefore loses nothing: on return, the observed state already
- * reflects whatever the agent produced in the meantime.
- */
 class ChatPresenter(
     private val screen: ChatScreen,
     private val navigator: Navigator,
@@ -54,10 +47,6 @@ class ChatPresenter(
         var isChatOptionsMenuVisible by remember { mutableStateOf(false) }
         var failure by remember { mutableStateOf<String?>(null) }
 
-        /**
-         * Retained, not remembered: a configuration change or a pop-and-return would otherwise
-         * re-run this and silently start a second conversation, abandoning the first.
-         */
         var createdChatId by rememberRetained { mutableStateOf<ChatId?>(null) }
 
         val chatId = screen.chatId ?: createdChatId
@@ -73,7 +62,7 @@ class ChatPresenter(
             observeChat(id).collectLatest { value = it }
         }
 
-        // Surface a failed run once, as a screen-level error, then let the timeline stand.
+        // A failed run shows once as the Error state; the timeline underneath is kept.
         LaunchedEffect(chatState?.execution) {
             failure = (chatState?.execution as? ChatExecutionState.Failed)?.message
         }
@@ -86,8 +75,6 @@ class ChatPresenter(
                     val id = chatId
                     if (id != null && event.prompt.isNotBlank()) {
                         prompt = ""
-                        // Fire-and-forget: `prompt` returns once the run is durable, and the answer
-                        // arrives through the observed state rather than through this call.
                         scope.launch { sendPrompt(chatId = id, text = event.prompt) }
                     }
                 }
@@ -112,15 +99,12 @@ class ChatPresenter(
 
                 ChatUiEvent.Ui.ChatSettingsClicked -> {
                     isChatOptionsMenuVisible = false
-                    // Only a saved chat has configuration to change; a new one has no id until its
-                    // first prompt creates it.
                     chatId?.let { navigator.goTo(ChatConfigurationScreen(it)) }
                 }
 
                 ChatUiEvent.Ui.ReloadClicked -> {
-                    // Dismissed regardless of what retry finds: an error about a run that is over
-                    // would otherwise be a screen with no way off it. When there *is* something to
-                    // run, the queued run reports `Working` and the timeline takes over from here.
+                    // Cleared even if retry finds nothing to run, or a stale error has no way off
+                    // the screen.
                     failure = null
                     chatId?.let { scope.launch { retryChat(it) } }
                 }
@@ -174,18 +158,6 @@ class ChatPresenter(
     }
 }
 
-/**
- * Which rendered item a search result meant.
- *
- * A turn projects reasoning *before* the reply it produced, and both carry the same message
- * sequence — so taking the first match would tint a collapsed thought bubble rather than the text
- * that was searched. Messages win; anything else with that sequence is the fallback, so a hit is
- * still shown rather than silently ignored.
- *
- * Null when nothing carries the sequence: the message may have been rewritten by history
- * compression, or the timeline may have been restored from a checkpoint whose indices do not line
- * up. The screen then opens normally, which is the right answer either way.
- */
 internal fun resolveHighlightedItemId(items: List<ChatItem>, messageSequence: Long?): String? {
     if (messageSequence == null) return null
 

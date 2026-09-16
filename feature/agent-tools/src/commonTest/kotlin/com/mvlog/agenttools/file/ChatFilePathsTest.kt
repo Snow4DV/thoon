@@ -5,13 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-/**
- * The sandbox.
- *
- * The model chooses these strings, and a web page it fetched may have suggested them, so an escape
- * attempt is an expected input rather than a hypothetical. This is the only thing standing between
- * one conversation's folder and the rest of the device.
- */
 class ChatFilePathsTest {
 
     private val root = "/data/files/chats/chat-1".toPath()
@@ -39,8 +32,6 @@ class ChatFilePathsTest {
 
     @Test
     fun traversalHiddenBehindRealSegmentsIsRejected() {
-        // The one a prefix check would miss: this only reveals itself once `..` is resolved away,
-        // which is why resolution normalises before it compares.
         assertFailsWith<ChatFileException> { ChatFilePaths.resolve(root, "a/../../chat-2/notes.md") }
     }
 
@@ -51,8 +42,6 @@ class ChatFilePathsTest {
 
     @Test
     fun aSiblingFolderSharingOurPrefixIsRejected() {
-        // `chat-1-notes` starts with `chat-1`, so a string-prefix containment check would let this
-        // through. Containment is compared segment by segment for exactly this case.
         assertFailsWith<ChatFileException> { ChatFilePaths.resolve(root, "../chat-1-notes/x.md") }
     }
 

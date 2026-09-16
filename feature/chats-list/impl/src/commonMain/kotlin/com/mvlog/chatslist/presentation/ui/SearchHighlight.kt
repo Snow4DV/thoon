@@ -6,14 +6,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 
 /**
- * [text] with every occurrence of [query] styled.
- *
- * Marking the match is the difference between a result the reader can scan and one they have to
- * re-read: the snippet is already windowed around the match, but nothing in it says which words
- * were asked for.
- *
- * Case-insensitive, matching how the search itself matched. Takes a [SpanStyle] rather than reading
- * the theme so it stays a plain function — the colour resolves in composition, this does not.
+ * Case-insensitive, like the search itself.
+ * Takes the [SpanStyle] so this stays a plain, composition-free function.
  */
 internal fun highlight(text: String, query: String, style: SpanStyle): AnnotatedString {
     val trimmed = query.trim()

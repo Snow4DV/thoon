@@ -20,22 +20,14 @@ import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.StartAgentRuntimeUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
 
-/**
- * Exposes the module's use cases to consumers.
- *
- * Builds nothing itself — that belongs to [ThoonAgentModule]. Supplying a different module replaces
- * the whole implementation behind this surface.
- */
 internal class ThoonAgentComponentImpl(
     dependencies: ThoonAgentComponentDependencies = ThoonAgentComponentDependencies.Impl(),
     private val module: ThoonAgentModule = ThoonAgentModule.Impl(dependencies),
 ) : ThoonAgentComponent {
 
-    // Lifecycle
     override fun startAgentRuntimeUseCase(): StartAgentRuntimeUseCase =
         module.startAgentRuntimeUseCase
 
-    // Chat
     override fun observeChatUseCase(): ObserveChatUseCase = module.observeChatUseCase
 
     override fun observeChatsUseCase(): ObserveChatsUseCase = module.observeChatsUseCase
@@ -57,7 +49,6 @@ internal class ThoonAgentComponentImpl(
 
     override fun setChatConfigUseCase(): SetChatConfigUseCase = module.setChatConfigUseCase
 
-    // Configuration
     override fun observeAgentConfigsUseCase(): ObserveAgentConfigsUseCase =
         module.observeAgentConfigsUseCase
 

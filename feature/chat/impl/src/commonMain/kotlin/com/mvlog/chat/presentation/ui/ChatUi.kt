@@ -80,9 +80,8 @@ fun ChatUi(
     state: ChatUiState,
     modifier: Modifier = Modifier,
 ) {
-    // Bottom insets sit on the prompt field rather than on this column: padding the whole screen
-    // would drag the top bar up with the keyboard. `imePadding` first, so that when the keyboard is
-    // open it consumes the navigation bar area it already covers and the two do not stack.
+    // Insets on the field, not the column, or the keyboard lifts the top bar; imePadding first so
+    // the two do not stack.
     val promptFieldModifier = Modifier
         .fillMaxWidth()
         .imePadding()
@@ -120,9 +119,7 @@ private fun ChatUiHeader(
     state: ChatUiState,
     modifier: Modifier = Modifier,
 ) {
-    // Anchored to the whole bar rather than to its overflow button: `ThoonTopBar` exposes a click
-    // lambda, not a slot, and widening its API for one caller costs more than the small offset this
-    // gives up.
+    // Anchored to the whole bar: ThoonTopBar has a click lambda, not an anchor slot.
     DropdownMenu(
         expanded = state.isChatOptionsMenuVisible,
         onExpandedChange = { expanded ->
@@ -137,9 +134,7 @@ private fun ChatUiHeader(
             }
         },
         anchor = {
-        ThoonTopBar(
-                // Status bar inset after the background, so the bar's colour runs all the way up behind
-                // the status bar while its content sits below it.
+            ThoonTopBar(
                 modifier = modifier
                     .fillMaxWidth()
                     .background(Theme[colors][secondaryColor])
@@ -180,10 +175,6 @@ private fun ChatUiDataContent(
 ) {
     val listState = rememberLazyListState()
 
-    // Sampled when a scroll settles rather than read when an item arrives: appending shifts the
-    // anchored key from index 0 to index 1, so a check made after the fact reports "not at the
-    // bottom" precisely when the reader was there. A programmatic scroll settles at index 0 and
-    // correctly leaves this true.
     var isFollowing by remember { mutableStateOf(true) }
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress }
@@ -191,47 +182,32 @@ private fun ChatUiDataContent(
             .collect { isFollowing = listState.firstVisibleItemIndex == 0 }
     }
 
-    // True while a jump to a searched-for message is still owed. Following is gated on it rather
-    // than on `isFollowing`, which cannot be pre-set to false: the collector above uses
-    // `snapshotFlow`, which emits its current value immediately, and at first composition that is
-    // "not scrolling, at index 0" — so any initial false would be overwritten within the frame.
     var isJumpPending by remember { mutableStateOf(state.isDeepLinked) }
     var isTinted by remember { mutableStateOf(false) }
 
-    // Growth needs no help — a reversed list pins the newest item's bottom edge, so a streaming
-    // message extends upwards and stays on screen. Only *new* items need this: the scroll position
-    // follows its anchor by key, which leaves an appended message just off the bottom edge.
-    // Instant rather than animated, because appends arrive mid-stream and animations would queue.
     LaunchedEffect(state.items.lastOrNull()?.id) {
         if (!isJumpPending && isFollowing) listState.scrollToItem(0)
     }
 
-    // Keyed on the size rather than the list: identity changes on every streaming frame, and
-    // comparing a persistent list costs a walk of it.
+    // Keyed on size: the list's identity changes every streaming frame.
     LaunchedEffect(state.highlightedItemId, state.items.size) {
         if (!isJumpPending || state.items.isEmpty()) return@LaunchedEffect
 
         val index = state.highlightedItemId?.let { id -> state.items.indexOfFirst { it.id == id } }
             ?: -1
 
-        // Cleared whether or not the target was found. A message the timeline no longer contains
-        // must not leave following disabled for the rest of the visit.
+        // Cleared even on a miss, or following stays off for the rest of the visit.
         isJumpPending = false
         if (index < 0) return@LaunchedEffect
 
-        // Reversed layout: index 0 is the newest, so a chronological position counts from the end.
         listState.scrollToItem(state.items.lastIndex - index)
         isTinted = true
         delay(HIGHLIGHT_MILLIS)
         isTinted = false
     }
 
-    // Reversed: index 0 is the newest item, drawn at the bottom. Anything added here that reasons
-    // about first or last, or about item placement, has to be written in those terms.
-    //
-    // `spacedBy` keeps its default `Alignment.Top`, which sounds wrong and is not: reverseLayout
-    // inverts the arranged offsets, so Top is what leaves a short conversation resting on the
-    // prompt field instead of stranded at the top of the screen.
+    // spacedBy stays Alignment.Top on purpose: reverseLayout inverts it, so Top rests a short chat
+    // on the prompt field.
     LazyColumn(
         modifier = modifier,
         state = listState,
@@ -240,10 +216,6 @@ private fun ChatUiDataContent(
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         items(state.items.asReversed(), key = { it.id }) { chatItem ->
-            // Tinting the whole item rather than the words inside it: message bodies render as
-            // markdown, whose only styling hook fires per syntax node, so a match spanning a space
-            // would silently go unmarked. A band is exact, and reads the same for a reply, a
-            // thought and a tool call.
             val tint by animateColorAsState(
                 targetValue = if (isTinted && chatItem.id == state.highlightedItemId) {
                     Theme[colors][primaryColor].copy(alpha = HIGHLIGHT_ALPHA)
@@ -276,8 +248,6 @@ private fun ChatUiDataContent(
                     }
 
                     is ChatItem.Thought -> ChatAiThought(
-                        // `state.items` is still chronological, so `last` is still the newest item —
-                        // the reversal above applies only to what the list renders.
                         isThinking = state.isThinking && chatItem.id == state.items.lastOrNull()?.id,
                         thoughts = chatItem.thoughts.toPersistentList(),
                         isExpanded = chatItem.isExpanded,
@@ -319,8 +289,6 @@ private fun ChatUiErrorContent(
         Text("Failed to load :(", style = ThoonTypography.h1, color = Theme[colors][primaryColor])
         Text(state.description, style = ThoonTypography.h3, color = Theme[colors][mutedColor])
 
-        // Labelled, and two of them: the most likely cause of an error here is a chat with no model
-        // configured, which no amount of retrying fixes on its own.
         Button(
             style = ButtonStyle.Primary,
             onClick = { state.eventSink(ChatUiEvent.Ui.ReloadClicked) },
@@ -476,10 +444,8 @@ fun ChatUiErrorPreview() {
     }
 }
 
-/** Long enough to find the message after the jump, short enough not to linger over the reading. */
 private const val HIGHLIGHT_MILLIS = 2000L
 
 private const val HIGHLIGHT_FADE_MILLIS = 400
 
-/** Enough tint to pick the message out without fighting the text on top of it. */
 private const val HIGHLIGHT_ALPHA = 0.22f

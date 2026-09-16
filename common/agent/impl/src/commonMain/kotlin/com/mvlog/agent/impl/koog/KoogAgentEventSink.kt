@@ -11,13 +11,8 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * Translates one run's Koog events into timeline writes. No Koog type escapes this class.
- *
- * Text arrives as many small deltas, so they are accumulated in memory and flushed on a time
- * budget rather than written per delta — a write per token would swamp storage and the observing
- * UI. Tool events are rare and are persisted immediately.
- *
- * Instances are per run, so the buffered state here is never shared across runs.
+ * Deltas are buffered and flushed on flushIntervalMillis; a write per token would swamp storage and
+ * the UI.
  */
 @OptIn(ExperimentalTime::class)
 internal class KoogAgentEventSink(
@@ -36,7 +31,7 @@ internal class KoogAgentEventSink(
         when (frame) {
             is StreamFrame.TextDelta -> appendText(frame.text)
             is StreamFrame.TextComplete -> completeText()
-            // Providers may send reasoning frames that only carry a summary or an encrypted blob.
+            // text is null for summary-only or encrypted reasoning frames.
             is StreamFrame.ReasoningDelta -> frame.text?.let { appendReasoning(it) }
             is StreamFrame.ReasoningComplete -> completeReasoning()
             else -> Unit
@@ -64,7 +59,6 @@ internal class KoogAgentEventSink(
         updateToolCall(toolCallId, ToolCallStatus.Failed(error))
     }
 
-    /** Writes out whatever is buffered and closes any open entry. */
     suspend fun finish() {
         completeText()
         completeReasoning()

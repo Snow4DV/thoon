@@ -8,16 +8,6 @@ import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.repository.CheckpointRepository
 import com.mvlog.log.TLogger
 
-/**
- * Where the agent framework writes its checkpoints.
- *
- * `sessionId` is the chat id — it is whatever was passed as the session to the agent run, and the
- * framework keys everything by it.
- *
- * Nothing here deletes: checkpoints are cleared when a run commits its history, which is a single
- * transaction owned by [PersistentChatHistoryProvider]. The repository trims to a cap only as a
- * guard against one run producing an unusual number of them.
- */
 internal class RoomPersistenceStorageProvider(
     private val repository: CheckpointRepository,
     private val codec: CheckpointCodec,
@@ -27,8 +17,7 @@ internal class RoomPersistenceStorageProvider(
         sessionId: String,
         agentCheckpointData: AgentCheckpointData,
     ) {
-        // A tombstone marks the run as finished, which makes every checkpoint before it dead
-        // weight — the conversation it described has already been committed to history.
+        // Tombstone = run finished: drop the run's checkpoints, keep the tombstone.
         if (agentCheckpointData.isTombstone()) {
             repository.clear(ChatId(sessionId))
         }
@@ -59,10 +48,7 @@ internal class RoomPersistenceStorageProvider(
             // A null filter means "everything" — the framework passes one only when narrowing.
             .filter { filter == null || filter.check(it) }
 
-    /**
-     * A checkpoint we cannot read is skipped rather than fatal — one bad row should not make the
-     * whole conversation unrecoverable.
-     */
+    /** Skip, not fail: one bad row must not make the chat unrecoverable. */
     private fun decodeOrNull(
         sessionId: String,
         stored: CheckpointRepository.StoredCheckpoint,

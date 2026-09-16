@@ -42,16 +42,8 @@ import com.mvlog.ui.ThoonPreview
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 
-/** How many trailing lines of reasoning stand in for the label while the model is still thinking. */
 private const val PREVIEW_LINE_COUNT = 3
 
-/**
- * The lines shown in place of the label, or empty to keep the label.
- *
- * Extracted because the two conditions are the whole behaviour and both are easy to break: previewing
- * while expanded would repeat the lines directly beneath it, and previewing a finished thought would
- * leave a stale tail sitting where the duration belongs.
- */
 internal fun thoughtPreviewLines(
     thoughts: List<String>,
     isThinking: Boolean,
@@ -62,14 +54,6 @@ internal fun thoughtPreviewLines(
     emptyList()
 }
 
-/**
- * Expandable thought.
- *
- * While collapsed and still thinking, the header shows the tail of the reasoning rather than a
- * static "Thinking…": the last lines are the ones changing, so they turn a spinner that could mean
- * anything into visible progress. Anything already finished keeps the summary label — its content
- * is one tap away and no longer moving.
- */
 @Composable
 fun ChatAiThought(
     isThinking: Boolean,
@@ -130,8 +114,6 @@ fun ChatAiThought(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         previewLines.forEach { line ->
-                            // One line each, so a long thought is truncated instead of pushing the
-                            // header to an arbitrary height as the model writes.
                             Text(
                                 text = line,
                                 color = mutedContentColor,
@@ -182,7 +164,6 @@ fun ChatAiThoughtPreview() {
                 onExpandedChange = { thinkingExpanded = it },
             )
 
-            // The live case: collapsed while still thinking, showing the tail of the reasoning.
             var thinkingCollapsed by remember { mutableStateOf(false) }
             ChatAiThought(
                 isThinking = true,

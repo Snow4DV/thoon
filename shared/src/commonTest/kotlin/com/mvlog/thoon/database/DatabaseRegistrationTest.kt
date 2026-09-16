@@ -10,13 +10,6 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-/**
- * Guards the one weakness of resolving DAOs by type: nothing forces [DatabaseInitializer] to
- * register a DAO a feature has just added, so a miss would only surface at runtime, in that
- * feature, on first use. This turns it into a build failure instead.
- *
- * Add every new DAO to [ALL_DAOS] alongside registering it.
- */
 class DatabaseRegistrationTest {
 
     @Test
@@ -28,7 +21,7 @@ class DatabaseRegistrationTest {
             }
         }
 
-        // The throwing accessor doubles as an assertion that registering never opens the database.
+        // The throwing accessor asserts that registering never opens the database.
         DatabaseInitializer().registerDaos(recorder) {
             fail("registering DAOs must not build the database")
         }

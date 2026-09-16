@@ -19,19 +19,10 @@ import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.StartAgentRuntimeUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
 
-/**
- * What the agent subsystem offers its consumers.
- *
- * Use cases rather than repositories: a screen should depend on the operations it performs, not on
- * a service object that also exposes everything it does not. The repositories behind these stay an
- * implementation detail.
- */
 interface ThoonAgentComponent {
 
-    // Lifecycle
     fun startAgentRuntimeUseCase(): StartAgentRuntimeUseCase
 
-    // Chat
     fun observeChatUseCase(): ObserveChatUseCase
 
     fun observeChatsUseCase(): ObserveChatsUseCase
@@ -52,7 +43,6 @@ interface ThoonAgentComponent {
 
     fun setChatConfigUseCase(): SetChatConfigUseCase
 
-    // Configuration
     fun observeAgentConfigsUseCase(): ObserveAgentConfigsUseCase
 
     fun getAgentConfigUseCase(): GetAgentConfigUseCase

@@ -12,8 +12,6 @@ class LocalEnginesCollectorTest {
 
     @Test
     fun nothingIsAvailableUntilSomethingRegisters() {
-        // The case that actually ships: no module implements an on-device engine, so the editor
-        // must be able to say so rather than offering a choice that cannot work.
         assertTrue(LocalEnginesCollector.obtain().isEmpty())
     }
 

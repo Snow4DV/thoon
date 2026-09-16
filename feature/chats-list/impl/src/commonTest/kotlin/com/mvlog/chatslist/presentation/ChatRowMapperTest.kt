@@ -22,8 +22,6 @@ class ChatRowMapperTest {
 
     @Test
     fun anUntitledChatFallsBackToItsId() {
-        // A chat abandoned before anything was asked never got named from a first prompt. Every such
-        // row would otherwise read identically.
         assertEquals("Chat 8424ee48", result(title = null).toRow().label)
     }
 
@@ -34,8 +32,6 @@ class ChatRowMapperTest {
 
     @Test
     fun theMatchedTextWinsOverTheLastMessage() {
-        // A search result that shows the newest message instead of the matching one cannot explain
-        // why it is in the list.
         val row = result(preview = "the most recent thing said", snippet = "the bit that matched").toRow()
 
         assertEquals("the bit that matched", row.subtitle)

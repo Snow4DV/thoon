@@ -6,12 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * A chat is named after the first thing asked of it.
- *
- * Until this existed nothing ever named a chat, so every row in the list read `Chat 8424ee48` and a
- * search over titles had nothing to match.
- */
 class ChatTitleTest {
 
     @Test
@@ -21,7 +15,6 @@ class ChatTitleTest {
 
     @Test
     fun onlyTheFirstLineIsUsed() {
-        // Prompts are often a paragraph; a list row is one line.
         assertEquals("Summarise this", chatTitleFrom("Summarise this\n\nHere is a long document…"))
     }
 
@@ -40,7 +33,6 @@ class ChatTitleTest {
 
     @Test
     fun aBlankPromptNamesNothing() {
-        // Storing an empty title would replace the id-derived fallback with nothing at all.
         assertNull(chatTitleFrom("   \n  \n "))
         assertNull(chatTitleFrom(""))
     }

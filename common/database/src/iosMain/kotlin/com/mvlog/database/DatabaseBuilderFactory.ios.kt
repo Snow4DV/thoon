@@ -16,9 +16,7 @@ actual class DatabaseBuilderFactory {
         name: String,
         initializer: () -> T,
     ): RoomDatabase.Builder<T> {
-        // See the Android actual: Room's builder is `inline reified`, so the type parameter is
-        // bound to the base type and the result cast back. Sound because [initializer] is always
-        // provided, so Room never falls back to reflective construction.
+        // Sound: the initializer is always passed, so Room never takes its reified reflective path.
         @Suppress("UNCHECKED_CAST")
         return Room.databaseBuilder<RoomDatabase>(
             name = "${documentsDirectory()}/$name",
@@ -26,10 +24,7 @@ actual class DatabaseBuilderFactory {
         ) as RoomDatabase.Builder<T>
     }
 
-    /**
-     * Documents rather than Caches: the system may evict Caches under storage pressure, which
-     * would silently drop conversation history.
-     */
+    // Documents, not Caches: iOS may evict Caches under storage pressure.
     @OptIn(ExperimentalForeignApi::class)
     private fun documentsDirectory(): String {
         val url: NSURL = NSFileManager.defaultManager.URLForDirectory(
@@ -44,10 +39,6 @@ actual class DatabaseBuilderFactory {
     }
 }
 
-/**
- * `Dispatchers.IO` is JVM-only — on Native it is internal, so this is the closest equivalent.
- *
- * Room serialises its own writes and the bundled SQLite driver does its own locking, so what
- * matters here is only that queries stay off the main thread.
- */
+// Default is enough: Room serialises writes and the bundled driver locks; queries only need to
+// stay off main.
 actual val databaseDispatcher: CoroutineContext = Dispatchers.Default

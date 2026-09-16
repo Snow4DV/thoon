@@ -4,12 +4,6 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * An empty list means two different things.
- *
- * Conflating them would offer "create a new chat" as the answer to a search that found nothing —
- * which answers a question nobody asked and hides the one they did.
- */
 class ChatsListEmptinessTest {
 
     @Test
@@ -27,7 +21,6 @@ class ChatsListEmptinessTest {
 
     @Test
     fun anEmptySearchBoxIsNotAFailedSearch() {
-        // Having selected the tab but typed nothing, the list is simply empty.
         assertEquals(
             ChatsListUiState.Emptiness.NoChats,
             state(tab = ChatsListTab.Search, query = "  ").emptiness,

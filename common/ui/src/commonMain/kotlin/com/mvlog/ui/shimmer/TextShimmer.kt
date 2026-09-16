@@ -26,13 +26,6 @@ private const val CHAR_WIDTH_RATIO = 0.58f
 private const val LINE_HEIGHT_RATIO = 1.2f
 private val SHIMMER_CORNER_RADIUS = 4.dp
 
-/**
- * A grey, rounded-corner skeleton sized to approximate a line of text, used as a loading
- * placeholder before the real text is available.
- *
- * @param textLength Approximate number of characters the real text will have.
- * @param fontSize The font size the real text will be rendered at.
- */
 @Composable
 fun TextShimmer(
     textLength: Int,
@@ -47,13 +40,6 @@ fun TextShimmer(
     )
 }
 
-/**
- * A grey, rounded-corner skeleton sized to a single line of text at [fontSize], used as a
- * loading placeholder before the real text is available. Width comes entirely from [modifier]
- * (e.g. `fillMaxWidth()`), unlike the [textLength]-based overload.
- *
- * @param fontSize The font size the real text will be rendered at.
- */
 @Composable
 fun TextShimmer(
     fontSize: TextUnit,

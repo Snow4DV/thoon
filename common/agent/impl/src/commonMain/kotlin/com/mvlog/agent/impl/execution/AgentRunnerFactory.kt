@@ -9,15 +9,8 @@ import com.mvlog.agent.impl.koog.PersistentChatHistoryProvider
 import com.mvlog.agent.impl.koog.RoomPersistenceStorageProvider
 import com.mvlog.agent.impl.util.AgentClock
 
-/**
- * Chooses how a run is served, based on the configuration resolved for its chat.
- *
- * An interface so tests can supply a runner without reaching a network, and so adding a protocol
- * touches only the implementation — the executor's job stays "run one thing to a terminal state".
- */
 internal interface AgentRunnerFactory {
 
-    /** Throws [UnsupportedConfigurationException] when [config] cannot be served. */
     fun create(config: AgentConfig?): AgentRunner
 }
 
@@ -31,8 +24,6 @@ internal class DefaultAgentRunnerFactory(
 ) : AgentRunnerFactory {
 
     override fun create(config: AgentConfig?): AgentRunner = when (config) {
-        // Answering anyway — by echoing, or with a canned reply — would present a setup problem as
-        // a working agent. Failing puts the reason in front of the user.
         null -> throw UnsupportedConfigurationException(
             "No agent configuration selected. Add one and set it as the default."
         )
@@ -55,5 +46,5 @@ internal class DefaultAgentRunnerFactory(
     }
 }
 
-/** Fails the run with a message the user can act on, rather than a stack trace. */
+/** Caught by the executor; its message is shown to the user as the failure reason. */
 internal class UnsupportedConfigurationException(message: String) : Exception(message)

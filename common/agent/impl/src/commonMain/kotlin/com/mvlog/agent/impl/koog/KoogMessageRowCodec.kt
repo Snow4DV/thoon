@@ -12,18 +12,6 @@ import com.mvlog.agent.impl.domain.entity.StoredRole
 import com.mvlog.agent.impl.util.IdGenerator
 import kotlinx.serialization.json.Json
 
-/**
- * The only place in the module that knows what a Koog [Message] is on the storage path.
- *
- * Storage holds turns and their parts as rows so that a conversation can be queried — which is what
- * makes searching messages a `WHERE` clause instead of decoding every conversation in the app. This
- * translates between that shape and the framework's.
- *
- * **Fidelity is not this file's invention.** Each part is stored as its own serialised
- * [MessagePart], so anything the row model does not name — encrypted reasoning, attachment sources,
- * cache control — round-trips through Koog's own serialiser. Only grouping and ordering are ours,
- * and those are what the round-trip test pins.
- */
 internal class KoogMessageRowCodec(
     private val json: Json,
     private val idGenerator: IdGenerator,
@@ -43,12 +31,8 @@ internal class KoogMessageRowCodec(
         }
 
     /**
-     * Rebuilds the conversation the framework was given.
-     *
-     * Parts are narrowed by the role that holds them — `Message.User` accepts only request parts and
-     * `Message.Assistant` only response parts — so a part stored under a role that cannot carry it
-     * is a real inconsistency. It throws rather than filtering, because a conversation quietly
-     * missing a tool call is worse than one that fails to load.
+     * narrowTo throws rather than filters: a conversation silently missing a part is worse than one
+     * that fails to load.
      */
     fun toMessages(rows: List<StoredMessage>): List<Message> =
         rows.sortedBy { it.sequence }.map { row ->
@@ -98,9 +82,6 @@ internal class KoogMessageRowCodec(
         id = idGenerator.newId(),
         sequence = sequence,
         kind = kind(),
-        // Only text carries a searchable body. Reasoning and tool output are stored in full but
-        // left out of this column, which is what stops a search matching what the model merely
-        // thought or what a fetched page happened to say.
         text = (this as? MessagePart.Text)?.text,
         toolName = (this as? MessagePart.Tool)?.tool,
         payloadJson = json.encodeToString(MessagePart.serializer(), this),

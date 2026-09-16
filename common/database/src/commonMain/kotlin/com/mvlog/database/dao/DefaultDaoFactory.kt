@@ -16,10 +16,7 @@ internal class DefaultDaoFactory : MutableDaoFactory {
         synchronized(lock) { providers[daoClass] = provider }
     }
 
-    /**
-     * The cast is sound because [register] is the only way in, and it can only accept a
-     * `() -> T` for a `KClass<T>` — nothing else can be stored under this key.
-     */
+    // Sound: register() is the only writer and pairs KClass<T> with () -> T.
     @Suppress("UNCHECKED_CAST")
     override fun <T : ThoonDao> get(daoClass: KClass<T>): T = synchronized(lock) {
         instances.getOrPut(daoClass) {

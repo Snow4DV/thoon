@@ -13,16 +13,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
-/**
- * The anchor a search result points at.
- *
- * An entry's own id is a counter over *rendered* entries, and that counter cannot be inverted: a
- * system turn is skipped, a user turn collapses into one entry, an assistant turn expands into one
- * per part. `messageSequence` is the index of the source message instead, which equals
- * `agent_chat_message.sequence` because `KoogMessageRowCodec` writes and reads it as the list index.
- *
- * Every deep link from search rests on that equality, and nothing else pins it.
- */
 class ChatTimelineProjectorTest {
 
     @Test
@@ -45,8 +35,6 @@ class ChatTimelineProjectorTest {
 
     @Test
     fun askippedSystemTurnDoesNotShiftTheAnchor() {
-        // The rendered counter and the stored sequence disagree from the very first entry, which is
-        // the whole reason a separate anchor exists.
         val user = ChatTimelineProjector().project(CHAT, conversation())
             .filterIsInstance<ChatEntry.UserMessage>()
             .first()
@@ -57,8 +45,6 @@ class ChatTimelineProjectorTest {
 
     @Test
     fun atoolResultDoesNotRestampTheCallItAnswers() {
-        // The result arrives in a later turn, and completing the call must not re-anchor it there:
-        // the entry that renders belongs to the turn that made the call.
         val call = ChatTimelineProjector().project(CHAT, conversation())
             .filterIsInstance<ChatEntry.ToolCall>()
             .single()

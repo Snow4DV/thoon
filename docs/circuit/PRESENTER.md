@@ -231,6 +231,15 @@ process-scoped owner — here that is the run coordinator (`SendPromptUseCase` e
 does not wait for the answer). If the result still matters after the user leaves, it does not belong
 on this scope.
 
+### Text inputs own their state
+
+A composable text input owns its `TextFieldState`, seeded once from the state's value
+(`rememberSaveable` where it must survive), and reports upward through a debounced `snapshotFlow`
+with `drop(1)` to skip the seed echo. Driving the field from the presenter would make every keystroke
+a round trip that lags or drops input under load; the presenter holds the draft only to restore the
+field. A submit event carries its own text so it never races the debounced change event. Where each
+reported value is a database query, as in search, the debounce is also what keeps it to one query.
+
 ### Errors land where they belong
 
 A typed error goes under the field that caused it; a failure about no one input is a banner. Both

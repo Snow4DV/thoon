@@ -13,9 +13,6 @@ class AgentToolsCollectorTest {
     fun collectedProvidersSurviveBeingRead() {
         AgentToolsCollector.collect { emptyList() }
 
-        // The registry is rebuilt for every run. A collector that drained itself — which is what
-        // AppOnCreateActionsCollector, the file this was modelled on, deliberately does — would arm
-        // the first run and silently disarm every one after it.
         assertEquals(1, AgentToolsCollector.collected().size)
         assertEquals(1, AgentToolsCollector.collected().size, "reading must not consume")
     }

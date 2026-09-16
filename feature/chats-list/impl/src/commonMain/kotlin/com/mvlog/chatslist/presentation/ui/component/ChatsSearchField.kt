@@ -1,6 +1,5 @@
 package com.mvlog.chatslist.presentation.ui.component
 
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,15 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 
-/**
- * The search input.
- *
- * Owns its own [TextFieldState] and reports upward debounced, the same arrangement
- * `ChatUiPromptField` uses and for the same reason: driving the field from the caller makes every
- * keystroke a round trip through the presenter. Here it also matters downstream — each reported
- * query starts a new database query, so a debounce is the difference between one search and one per
- * character.
- */
+/** Debounced: every reported query is a database query. */
 @OptIn(FlowPreview::class)
 @Composable
 internal fun ChatsSearchField(
@@ -48,8 +39,7 @@ internal fun ChatsSearchField(
             .collectLatest { latestOnQueryChanged(it) }
     }
 
-    // Selecting the tab is the whole intent; making the user then tap the field would be asking
-    // twice.
+    // Auto-focus: choosing the tab is the intent.
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
 
     TextField(

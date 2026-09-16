@@ -18,16 +18,6 @@ import com.slack.circuit.runtime.presenter.Presenter
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.launch
 
-/**
- * Lists chats, searches them, and opens them.
- *
- * One source for both tabs: searching with a blank query lists everything, so the screen never
- * switches between two flows and the list cannot disagree with itself mid-transition.
- *
- * Creating a chat is deliberately not done here: navigating to [ChatScreen] with a null id makes
- * that screen create one. Doing it in both places would leave an empty chat behind whenever the
- * user backed out immediately.
- */
 class ChatsListPresenter(
     private val navigator: Navigator,
     private val searchChats: SearchChatsUseCase,
@@ -41,8 +31,6 @@ class ChatsListPresenter(
         var tab by remember { mutableStateOf(ChatsListTab.Chats) }
         var query by remember { mutableStateOf("") }
 
-        // Leaving the search tab clears the query rather than remembering it: coming back to a list
-        // silently filtered by something typed minutes ago reads as chats having gone missing.
         val effectiveQuery = if (tab == ChatsListTab.Search) query else ""
         val results by remember(effectiveQuery) { searchChats(effectiveQuery) }
             .collectAsState(initial = null)

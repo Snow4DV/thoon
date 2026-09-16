@@ -11,15 +11,6 @@ import com.mvlog.database.di.DefaultDatabaseComponent
 import com.mvlog.database.di.ThoonDatabaseComponentHolder
 import com.mvlog.init.BaseInitializer
 
-/**
- * Publishes the database and every feature's DAOs.
- *
- * Nothing here opens the database: the component is built on first access, and each DAO is
- * registered as a lambda that is only invoked when that DAO is first requested.
- *
- * Every DAO a feature declares must be registered here — a missing entry surfaces the first time
- * that feature touches storage, which [ThoonDatabaseTest] guards against.
- */
 class DatabaseInitializer : BaseInitializer(tag = TAG) {
 
     override fun init() {
@@ -35,10 +26,8 @@ class DatabaseInitializer : BaseInitializer(tag = TAG) {
         }
     }
 
-    /**
-     * Separated from [init] so a test can observe which DAOs get registered without building a
-     * database. [database] is only dereferenced when a DAO is actually resolved.
-     */
+    // Apart from init() so DatabaseRegistrationTest can record registrations without opening a
+    // database.
     internal fun registerDaos(registry: DaoRegistry, database: () -> ThoonDatabase) {
         registry.register(ChatDao::class) { database().chatDao() }
         registry.register(AgentCheckpointDao::class) { database().agentCheckpointDao() }

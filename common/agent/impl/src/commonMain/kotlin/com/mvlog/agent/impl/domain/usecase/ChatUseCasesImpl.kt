@@ -32,12 +32,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-/**
- * Chat use cases: the operations a screen performs, implemented against storage.
- *
- * Each implements the contract of the same name in `common:agent:api`, so the dependency runs one
- * way only — a caller depends on the use case, the use case depends on repositories.
- */
 internal class ObserveChatUseCaseImpl(
     private val chatRepository: ChatRepository,
     private val runRepository: AgentRunRepository,
@@ -45,12 +39,6 @@ internal class ObserveChatUseCaseImpl(
     private val mapper: ChatStateApiMapper,
 ) : ObserveChatUseCase {
 
-    /**
-     * Rebuilds the timeline from durable state before observing it.
-     *
-     * The projection lives only as long as the process, so opening a chat after a restart would
-     * otherwise show nothing — including the tool calls of a run that died before committing.
-     */
     override fun invoke(chatId: ChatId): Flow<ChatState> = flow {
         chatRepository.hydrate(chatId, conversationRepository.timeline(chatId))
 
@@ -101,13 +89,6 @@ internal class CreateChatUseCaseImpl(
     }
 }
 
-/**
- * Re-runs whatever a chat is still waiting on.
- *
- * The rule for "still waiting" lives here rather than in the coordinator so that startup recovery
- * and the retry button share one definition; `AgentRunCoordinator` calls this for each chat it finds
- * at launch.
- */
 internal class RetryChatUseCaseImpl(
     private val conversationRepository: ConversationRepository,
     private val runRepository: AgentRunRepository,
@@ -115,16 +96,12 @@ internal class RetryChatUseCaseImpl(
 ) : RetryChatUseCase {
 
     override suspend fun invoke(chatId: ChatId): Boolean {
-        // Something is already on it. Queueing a second run would answer the same prompt twice —
-        // the chat mutex would serialise them, so the duplication would be visible rather than
-        // merely wasteful.
+        // A live run already owns this prompt; a second would answer it twice.
         if (runRepository.observeRuns(chatId).first().any { !it.status.isTerminal }) return false
 
         val prompt = conversationRepository.unansweredPrompt(chatId)
 
-        // A turn interrupted after its tools ran resumes with a blank prompt: the conversation
-        // already holds the results the model was about to read, so re-asking the original question
-        // would put it in the transcript twice.
+        // Blank prompt: the tool results are already in the conversation.
         if (prompt == null && !conversationRepository.hasUnfinishedToolTurn(chatId)) return false
 
         runRepository.enqueue(
@@ -153,13 +130,6 @@ private fun ChatMetadata.toSummary(): ChatSummary = ChatSummary(
     lastMessagePreview = lastMessagePreview,
 )
 
-/**
- * Accepts a prompt for execution.
- *
- * Returns as soon as the prompt and its run are durable — it does not wait for, or even start,
- * the agent. Execution is picked up separately by the coordinator, which is what lets the caller
- * navigate away without losing the answer.
- */
 internal class SendPromptUseCaseImpl(
     private val chatRepository: ChatRepository,
     private val runRepository: AgentRunRepository,
@@ -171,13 +141,8 @@ internal class SendPromptUseCaseImpl(
     override suspend fun invoke(chatId: ChatId, text: String): AgentRunId {
         val runId = AgentRunId(idGenerator.newId())
 
-        // Durable first, and deliberately so: a process that dies after this leaves a prompt that
-        // recovery can see and re-queue. Dying before it loses nothing but an unrecorded keystroke.
         conversationRepository.appendUserPrompt(chatId = chatId, text = text)
 
-        // The first thing asked names the chat. Only the first: a title that changed with every
-        // prompt would be a moving target in the list, and renaming is the user's to do once
-        // anything offers it.
         if (metadataRepository.get(chatId)?.title == null) {
             chatTitleFrom(text)?.let { metadataRepository.setTitle(chatId, it) }
         }
@@ -188,13 +153,7 @@ internal class SendPromptUseCaseImpl(
     }
 }
 
-/**
- * A chat's name, taken from the first thing asked of it.
- *
- * The first line only, and trimmed: a prompt is often a paragraph, and a list row shows one line.
- * Null for a prompt with nothing in it, so a blank title is never stored — the list falls back to an
- * id-derived label, which at least tells two chats apart.
- */
+/** First non-blank line, truncated. Null for a blank prompt so the id-derived fallback survives. */
 internal fun chatTitleFrom(prompt: String): String? {
     val firstLine = prompt.lineSequence().firstOrNull { it.isNotBlank() }?.trim() ?: return null
 
@@ -216,9 +175,8 @@ internal class CancelAgentRunUseCaseImpl(
         val run = runRepository.get(runId) ?: return
         if (run.status.isTerminal) return
 
-        // A live run is stopped by interrupting its coroutine; the executor records the outcome as
-        // it unwinds. A run that has not started yet has no coroutine to interrupt, so it is
-        // retired directly and the coordinator will simply never pick it up.
+        // A queued run has no coroutine to interrupt: retire the row and the coordinator never
+        // picks it up.
         val interrupted = canceller.cancelRunning(runId)
         if (!interrupted && run.status == AgentRunStatus.Queued) {
             runRepository.markCancelled(runId)

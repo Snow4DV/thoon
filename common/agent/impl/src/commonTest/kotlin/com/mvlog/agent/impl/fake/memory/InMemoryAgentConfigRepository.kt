@@ -12,13 +12,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Process-lifetime configuration storage.
- *
- * Mirrors [com.mvlog.agent.impl.data.repository.RoomAgentConfigRepository] behaviourally, including
- * the invariant that deleting a configuration detaches it from the default and from any chat that
- * had selected it.
- */
+/** Deleting clears the default, as the Room DAO does; chat overrides are the use case's job. */
 internal class InMemoryAgentConfigRepository : AgentConfigRepository {
 
     private val mutex = Mutex()

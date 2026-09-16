@@ -14,13 +14,6 @@ import com.mvlog.agent.impl.util.AgentClock
 import com.mvlog.log.TLogger
 import kotlinx.coroutines.flow.first
 
-/**
- * Reads and writes the durable conversation, and is the only place outside the runner that knows it
- * is stored as agent-framework messages.
- *
- * Uncommitted work wins over committed history — the same rule [PersistentChatHistoryProvider]
- * restores the model with, so the timeline and the replay can never diverge.
- */
 internal class KoogConversationRepository(
     private val historyRepository: ChatHistoryRepository,
     private val checkpointRepository: CheckpointRepository,
@@ -35,8 +28,8 @@ internal class KoogConversationRepository(
         projector.project(chatId, messages(chatId))
 
     override suspend fun appendUserPrompt(chatId: ChatId, text: String) {
-        // Committed history only: a checkpoint belongs to the run that produced it, and appending
-        // to it would rewrite that run's own record of what it was doing.
+        // Append to committed history, never to a checkpoint, which belongs to the run that wrote
+        // it.
         val committed = committedMessages(chatId)
         val appended = committed + Message.User(
             content = text,
@@ -52,13 +45,6 @@ internal class KoogConversationRepository(
             ?.textContent()
             ?.takeIf { it.isNotBlank() }
 
-    /**
-     * True when the conversation ends with tool results.
-     *
-     * Checked by parts rather than by text: a tool result is a `Message.User` whose content is the
-     * result payload, so [unansweredPrompt] reads it as a prompt with nothing in it and skips the
-     * chat entirely.
-     */
     override suspend fun hasUnfinishedToolTurn(chatId: ChatId): Boolean =
         messages(chatId).lastOrNull()
             ?.let { last -> last is Message.User && last.parts.any { it is MessagePart.Tool.Result } }
@@ -69,7 +55,6 @@ internal class KoogConversationRepository(
             .map { it.id }
             .filter { unansweredPrompt(it) != null || hasUnfinishedToolTurn(it) }
 
-    /** Uncommitted work if a run left any, else the committed conversation. */
     private suspend fun messages(chatId: ChatId): List<Message> =
         uncommittedMessages(chatId) ?: committedMessages(chatId)
 
@@ -80,7 +65,7 @@ internal class KoogConversationRepository(
             .getOrNull()
             ?: return null
 
-        // A tombstone records that a run ended and carries no history of its own.
+        // A tombstone marks a finished run and carries no history.
         return checkpoint.takeIf { !it.isTombstone() }?.messageHistory
     }
 

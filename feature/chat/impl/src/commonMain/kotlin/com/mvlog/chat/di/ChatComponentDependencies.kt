@@ -7,12 +7,6 @@ import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 
-/**
- * What the chat feature needs from other modules, and nothing else.
- *
- * Every member is a lookup against the agent subsystem's holder, resolved per access — so building
- * the chat component does not force the agent to initialise.
- */
 internal interface ChatComponentDependencies {
 
     val observeChatUseCase: ObserveChatUseCase

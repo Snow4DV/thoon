@@ -14,12 +14,7 @@ import com.slack.circuit.foundation.CircuitCompositionLocals
 import com.slack.circuit.foundation.NavigableCircuitContent
 import com.slack.circuit.foundation.rememberCircuitNavigator
 
-/**
- * The app.
- *
- * Deliberately not `@Preview`-able: it installs a database context and initialises every feature,
- * which is not something a preview should do. Preview the individual screens instead.
- */
+// Not @Preview-able on purpose: it installs a database context and runs every initializer.
 @Composable
 fun App() {
     rememberAppStartup()
@@ -32,9 +27,8 @@ fun App() {
             // receives a `PopResult?`, so it cannot be written as `{ }`.
             val navigator = rememberCircuitNavigator(backStack) { _ -> }
 
-            // No inset padding here: it would apply to every screen uniformly, which stops a top
-            // bar from painting its background behind the status bar and leaves it floating below
-            // a strip of window. Screens consume the insets they actually care about.
+            // No inset padding here: applied uniformly it stops a top bar painting behind the
+            // status bar.
             NavigableCircuitContent(
                 navigator = navigator,
                 backStack = backStack,
@@ -44,17 +38,7 @@ fun App() {
     }
 }
 
-/**
- * Assembles the screen graph.
- *
- * Deliberately names no feature: the routing table is whatever the initializers registered with
- * `ScreenFactoriesCollector`, so adding a screen means adding an initializer to `FeatureRegistry`
- * and nothing here. One dispatcher stands in for every feature's factories and resolves by screen
- * type, so a feature's component is not built until something navigates to it.
- *
- * The saver comes from the same registrations. It is built here, inside `remember`, which runs
- * after `rememberAppStartup()` has run every initializer — so the module it snapshots is complete.
- */
+// Inside remember so the saver snapshots the collector after every initializer has run.
 @Composable
 private fun rememberThoonCircuit(): Circuit = remember {
     val screenFactories = CollectedScreenFactories()

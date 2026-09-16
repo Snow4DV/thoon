@@ -8,12 +8,6 @@ import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import com.slack.circuit.runtime.screen.Screen
 
-/**
- * Resolves [ChatsListScreen] to its presenter.
- *
- * Returning null for anything else is the contract, not a fallback: the framework asks every
- * registered factory in turn until one claims the screen.
- */
 class ChatsListPresenterFactory(
     private val searchChats: SearchChatsUseCase,
     private val deleteChat: DeleteChatUseCase,

@@ -13,10 +13,6 @@ import com.composables.ui.theme.controlColor
 import com.composeunstyled.theme.Theme
 import com.valentinilk.shimmer.shimmer
 
-/**
- * A grey shimmering block, sized entirely by [modifier], used to build up chat item skeletons
- * from icon-, bubble-, and dot-shaped pieces.
- */
 @Composable
 internal fun ChatItemShimmerBlock(
     modifier: Modifier = Modifier,

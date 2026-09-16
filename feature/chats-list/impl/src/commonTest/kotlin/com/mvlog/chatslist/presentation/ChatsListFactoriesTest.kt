@@ -11,11 +11,6 @@ import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
-/**
- * The factories are how the framework finds this screen at all, so what matters is that they claim
- * exactly their own screen and decline everything else — a factory that answered for a foreign
- * screen would shadow whichever one actually owns it.
- */
 class ChatsListFactoriesTest {
 
     private data object OtherScreen : Screen

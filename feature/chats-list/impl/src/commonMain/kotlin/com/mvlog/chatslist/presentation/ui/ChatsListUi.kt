@@ -48,8 +48,7 @@ fun ChatsListUi(
     state: ChatsListUiState,
     modifier: Modifier = Modifier,
 ) {
-    // This screen has no top bar to paint behind the status bar, so it takes the window insets
-    // itself — the Circuit host does not apply them for every screen.
+    // No top bar to own the status inset, so the screen takes it.
     Box(modifier = modifier.fillMaxSize().statusBarsPadding()) {
         when (state) {
             is ChatsListUiState.Loading -> Unit
@@ -63,8 +62,7 @@ fun ChatsListUi(
                     onNewChat = { state.eventSink(ChatsListUiEvent.Ui.NewChatClicked) },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        // Rides above the keyboard: the search field is at the top, so a bar left
-                        // behind the keyboard would strand the way back out of searching.
+                        // Above the keyboard, or the way out of Search is hidden behind it.
                         .imePadding()
                         .navigationBarsPadding()
                         .padding(bottom = 16.dp),
@@ -94,8 +92,6 @@ private fun ChatsListDataContent(state: ChatsListUiState.Data) {
                 },
             )
 
-            // No create button: making a new chat is not the answer to a search that found none,
-            // and offering it here would be answering a different question than the one asked.
             ChatsListUiState.Emptiness.NoMatches -> EmptyState(
                 title = "Nothing matches",
                 subtitle = "No chat contains \"${state.query.trim()}\".",
@@ -109,8 +105,6 @@ private fun Header(state: ChatsListUiState.Data) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp),
-            // Bottom, not centre: the settings icon sits on the title's baseline rather than
-            // floating in the middle of a line much taller than it is.
             verticalAlignment = Alignment.Bottom,
         ) {
             Text(
@@ -141,7 +135,7 @@ private fun Header(state: ChatsListUiState.Data) {
 private fun ColumnScope.ChatList(state: ChatsListUiState.Data) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth().weight(1f),
-        // Room at the bottom for the floating bar, which would otherwise sit on the last row.
+        // Clears the floating bar over the last row.
         contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         items(state.chats, key = { it.key }) { chat ->
@@ -166,8 +160,6 @@ private fun ChatListRow(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    // Resolved here rather than passed in: the colour comes from the theme, which only exists
-    // inside composition.
     val matchStyle = SpanStyle(
         background = Theme[colors][primaryColor].copy(alpha = HIGHLIGHT_ALPHA),
         fontWeight = FontWeight.Medium,
@@ -228,5 +220,4 @@ private fun ColumnScope.EmptyState(
     }
 }
 
-/** Enough tint to find at a glance, not so much that the text underneath stops being readable. */
 private const val HIGHLIGHT_ALPHA = 0.25f

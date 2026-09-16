@@ -39,12 +39,6 @@ internal class InMemoryChatMetadataRepository(
         chats.map { all -> all.values.sortedByDescending { it.lastMessageAt ?: it.createdAt } }
             .distinctUntilChanged()
 
-    /**
-     * Matches titles only.
-     *
-     * The real implementation searches message text through a join this fake has no messages to
-     * join to. Tests that care about matching message bodies belong against the query itself.
-     */
     override fun search(query: String): Flow<List<ChatMetadataMatch>> {
         val trimmed = query.trim().lowercase()
         return observeAll().map { chats ->

@@ -18,7 +18,7 @@ turn, which is recovered on next launch.
 
 ```bash
 ./gradlew :androidApp:assembleDebug          # Android app
-./gradlew testAndroidHostTest                # every module's host tests (197 today)
+./gradlew testAndroidHostTest                # every module's host tests (196 today)
 ./gradlew compileKotlinIosSimulatorArm64 compileKotlinIosArm64   # iOS must keep compiling
 ```
 
@@ -99,121 +99,24 @@ initializer); screens are found and saved through `ScreenFactoriesCollector`, on
 screen carrying its serializer; four collectors exist and only `AppOnCreateActionsCollector` drains.
 **A new feature is invisible until its initializer is added to `FeatureRegistry`.**
 
-### Startup order
+### Startup order, storage
 
-There is **no `Application` subclass**: both platforms enter through Compose, so `App()` is the only
-shared entry point. `rememberAppStartup()` is `expect`/`actual` — the Android actual installs the
-database and files `Context` first; iOS resolves its own directory. Then, in this order:
-
-1. `FeatureRegistry().initialize()` — every `BaseInitializer`, each wrapped in `runCatching` so one
-   failure is logged rather than fatal. Order-independent: holders build lazily.
-2. `AppOnCreateActionsCollector.execute()` — actions that need the holders the initializers just
-   registered. Today there is exactly one: `ThoonAgentInitializer` starts the run coordinator, so
-   unfinished work is recovered at launch.
-
-Phase 1 registers *providers* and collects; no component is built. The list within phase 1 is
-order-independent, the two phases are not.
-
-**A new feature is invisible until its initializer is added to `FeatureRegistry`.**
+Both in `docs/architecture/`: [`STARTUP.md`](docs/architecture/STARTUP.md) (no `Application`
+subclass, two ordered phases, what each platform installs first) and
+[`STORAGE.md`](docs/architecture/STORAGE.md) (one Room database in `:shared`, DAOs travel back up
+through `DaoFactory`, the conversation schema, the anchor invariant, no migrations). Two lines worth
+repeating here: **a new feature is invisible until its initializer is added to `FeatureRegistry`**,
+and **a DAO added without registering it in `DatabaseInitializer` fails at runtime**.
 
 ## The agent runtime
 
-A prompt's life:
-
-1. `SendPromptUseCase` writes the prompt to the conversation **before** enqueuing a run. Dying after
-   this leaves work recovery can see; dying before loses an unrecorded keystroke.
-2. `AgentRunCoordinator` observes pending runs and drains them, **one worker per chat**.
-3. `AgentRunExecutor` resolves the config (per-chat override, else the global default) and runs.
-4. `KoogAgentRunner` builds a Koog graph. Edge order is load-bearing — a turn carrying both text and
-   a tool call must take the tool edge, and `AIAgentNode` takes the *first* accepting edge.
-5. On completion `PersistentChatHistoryProvider.store` commits the conversation and drops that
-   chat's checkpoints **in one transaction**. A checkpoint outliving its commit replays a landed turn.
-
-`RetryChatUseCase` defines what a chat is "still waiting on" — an unanswered prompt, or a turn
-interrupted after its tools ran. Both startup recovery and the retry button call it, so they cannot
-disagree.
-
-Notes that cost time to rediscover:
-
-- `ChatMemory` **replaces** the prompt with restored history rather than merging. The system message
-  must therefore be restored with everything else, or every turn after the first has no system prompt.
-  **Corollary: editing `AGENT_SYSTEM_PROMPT` reaches new chats only** — an existing chat replays the
-  prompt it was born with. It is also why the current date is a tool (`current_datetime`) and not a
-  line in the prompt: a date in the prompt would freeze at the chat's first turn.
-- **Koog's reflective tool API (`ToolSet`, `@Tool`, `asTools()`) and `openAIClient()` live in
-  `jvmCommonMain` and are absent from the iOS klib.** They compile on Android and break the iOS
-  build. `KoogToolRegistryFactory` writes descriptors by hand for exactly this reason.
-- Koog's `OllamaClient.executeStreaming` accepts `tools` and omits them from the request.
-  `ToolForwardingOllamaClient` decorates it to put them back.
-- The OpenAI `/v1` compatibility layer drops reasoning, which is why `AgentConfig.Ollama` exists as
-  its own protocol rather than as an `OpenAiCompatible` pointed at `/v1`.
-
-### Tools
-
-Seven, all in `feature/agent-tools`: `list_files`, `read_file`, `write_file`, `edit_file`,
-`fetch_url`, `web_search`, `current_datetime`. They implement `ThoonAgentTool` from
-`common:agent:tool-api` — a Koog-free contract, so a feature contributing a tool never compiles
-against the framework — and are listed in `AgentToolsModule.Impl.agentToolProvider`. **Adding one is
-one class and one line in that list.** Zero-parameter tools are fine (`list_files`,
-`current_datetime` both are). Throw to report failure: the message reaches the model as the result,
-so write it for that reader.
-
-`web_search` scrapes DuckDuckGo's HTML endpoint, and three things about it are not obvious:
-
-- An empty parse has three causes and the tool tells them apart: a page marked `no-results` (an
-  ordinary answer — the model should rephrase), the anti-bot interstitial (this device is blocked),
-  or the markup having moved (the tool is broken). Reporting the first as the third once sent the
-  model hunting for a fault that was not there.
-- **The interstitial is served as HTTP 202**, which `isSuccess()` accepts. Check the body first.
-- The emulator shares the host's IP. Hammering the endpoint from a terminal to test it gets the
-  *app* blocked too. Test against saved fixture HTML (`WebSearchToolTest`, via Ktor `MockEngine`).
-
-## Storage
-
-**One Room database for the whole app** (`ThoonDatabase` in `:shared`, currently `VERSION = 2`).
-
-The dependency runs the wrong way on purpose: the database must see every module's entities, so it
-lives downstream, and DAOs travel back up through `DaoFactory`:
-
-```kotlin
-daoFactory().get<ChatDao>()
-```
-
-Consequences, all deliberate:
-
-- Entities and DAOs in feature modules must be **`public`** — `@Database(entities = [...])` in
-  `:shared` cannot see `internal` types. Repositories, mappers and use cases stay `internal`.
-- Any feature's schema change bumps the shared version.
-- **A DAO added without registering it in `DatabaseInitializer` fails at runtime.**
-  `DatabaseRegistrationTest` guards this — add new DAOs to its `ALL_DAOS` set.
-- `applyThoonDefaults` omits `fallbackToDestructiveMigration` on purpose: with one file, a
-  destructive fallback wipes every feature's data. `ThoonMigrations.ALL` is currently empty.
-
-### The conversation schema
-
-Conversations are **rows, not a blob**: `agent_chat_message` (one turn) → `agent_chat_part` (one
-piece of content). A turn holds several parts because reasoning and the reply it produced sit side
-by side, and only one of them should ever be searched.
-
-- `part.kind` is `text | reasoning | tool_call | tool_result | attachment`. **Search filters to
-  `kind = 'text'` and `role IN ('user','assistant')`** — without the first, 52% of a real
-  conversation (reasoning + tool traffic) is searchable; without the second, every chat matches any
-  word in the system prompt.
-- `part.textLower` is lowercased **in Kotlin**, because SQLite folds ASCII only and `LIKE '%привет%'`
-  would never match `Привет`.
-- `part.payloadJson` is the exact serialised framework part. That is what makes storage lossless —
-  encrypted reasoning, attachment sources and cache control round-trip through the framework's own
-  serialiser rather than a hand-written mapping.
-- `message.createdAt` is **commit time**, stamped once per batch — not the message's own timestamp.
-  Never order by it. Order by `coalesce(chat.lastMessageAt, chat.createdAt)`.
-
-### The anchor invariant
-
-`ChatTimelineProjector` assigns entry ids as a counter over *rendered* entries, which cannot be
-inverted (system turns are skipped, a user turn collapses, an assistant turn expands per part). So
-each entry also carries `messageSequence`, and **that equals `agent_chat_message.sequence`** because
-`KoogMessageRowCodec.toRows` writes `sequence = index` and `toMessages` sorts by it. Search deep
-links rest entirely on that equality; `ChatTimelineProjectorTest` pins it.
+In [`docs/architecture/AGENT_RUNTIME.md`](docs/architecture/AGENT_RUNTIME.md): a prompt's life from
+durable row to committed conversation, what a chat is "waiting on", checkpoints, and the seven tools.
+Module decisions and Koog 1.1.1 quirks are in `common/agent/AGENTS.md`; the tools' own decisions in
+`feature/agent-tools/AGENTS.md`. Three lines worth repeating here: **`ChatMemory` replaces the prompt
+with restored history, so the system message must be restored too and editing it reaches new chats
+only**; **Koog's reflective tool API and `openAIClient()` are JVM-only and break the iOS build**; and
+**the `web_search` anti-bot interstitial is served as HTTP 202**.
 
 ## Testing
 
@@ -231,9 +134,14 @@ What exists to test each layer, and what does not:
 | **Compose UI behaviour** (scroll, highlight, follow-the-bottom) | **nothing** | verify by hand |
 
 Room does validate every `@Query` at compile time through KSP, so a projection that does not match
-its row class fails the build — that catches shape, not semantics. `InMemoryChatMetadataRepository`
-matches titles only and returns no snippet; it is deliberately not a second implementation of the
-search query.
+its row class fails the build — that catches shape, not semantics. Neither in-memory fake
+reimplements Room's logic: `InMemoryChatHistoryRepository` stores whole conversations with no diff,
+and `InMemoryChatMetadataRepository` matches titles only and returns no snippet.
+
+In `runTest` harnesses, launch the agent scope and collectors as `CoroutineScope(coroutineContext +
+Job())` children of the test scope, not `backgroundScope`: `advanceUntilIdle()` does not advance
+`backgroundScope` coroutines. The back-stack saver is tested for registration only
+(`ScreenSaverRoundTripTest`); its Bundle layer runs only on a device.
 
 ## Conventions
 
@@ -250,8 +158,13 @@ When it is in a doc, do not link to it from code — the doc is where a reader l
 - Tests: the name is the sentence and the assertion message states the consequence. A one-line
   comment is allowed only where an assertion would otherwise look tautological.
 - Companion constants (`TAG`, `TITLE`) are never commented.
+- The one exception: a public `api` module keeps a one-line contract on each use case or model
+  property that a caller cannot infer from the signature ("returns once durable, not when
+  answered"; "null follows the default"). A caller in another module reads the interface, not a
+  nested `AGENTS.md`. Rationale still goes to the docs.
 
-`feature/agent-configuration` is the reference for what this looks like applied.
+`feature/agent-configuration` is the reference for what this looks like applied; every module now
+follows it, and the ones with decisions of their own have a nested `AGENTS.md`.
 
 - Kotlin official style, 4 spaces, ~100 column soft wrap.
 - Time is `kotlin.time.Instant`/`Clock` from the stdlib (`Clock.System` needs

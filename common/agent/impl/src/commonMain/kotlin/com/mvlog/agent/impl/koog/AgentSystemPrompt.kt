@@ -1,17 +1,5 @@
 package com.mvlog.agent.impl.koog
 
-/**
- * What the model is told about itself before the conversation starts.
- *
- * Tool schemas say what a tool accepts; nothing in them says when to reach for one, that files
- * outlive the session, or that a fetched page is a stranger's text rather than an instruction. A
- * local model handed schemas and no guidance either ignores them or calls them at random.
- *
- * Supplied by `AIAgent.builder().systemPrompt(...)` on the first run of a chat, after which it
- * round-trips through stored history — `ChatMemory` replaces the prompt with restored history
- * rather than merging into it, so the stored copy is the only one later turns see. An existing
- * conversation therefore keeps the brief it started with; editing this reaches new chats only.
- */
 internal const val AGENT_SYSTEM_PROMPT: String =
     """You are Thoon, an assistant running on the user's own device.
 

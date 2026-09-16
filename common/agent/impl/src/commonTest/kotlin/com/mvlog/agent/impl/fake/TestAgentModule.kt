@@ -73,23 +73,10 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 
-/**
- * The agent graph on in-memory storage, with no database anywhere.
- *
- * Swapped in wholesale rather than patched into the production module, so a test can never
- * accidentally reach a DAO: this module has no dependencies at all.
- *
- * Storage is stored rather than `get()` — unlike the Room implementations, the in-memory ones hold
- * their own state, so a fresh instance per access would hand back an empty store.
- */
 internal class TestAgentModule(
     private val agentScope: CoroutineScope,
     private val clock: AgentClock = AgentClock.System,
     private val idGenerator: IdGenerator = IdGenerator.Random,
-    /**
-     * True serves every run by echoing the prompt, for tests about the pipeline itself. False uses
-     * the real factory, which needs a configuration before it will serve anything.
-     */
     private val echoRuns: Boolean = false,
 ) : ThoonAgentModule {
 

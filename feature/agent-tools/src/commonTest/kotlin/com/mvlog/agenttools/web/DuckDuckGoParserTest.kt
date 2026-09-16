@@ -5,11 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Markup captured from the live endpoint, trimmed to two results.
- *
- * Real rather than invented, because every detail that breaks a naive parser is a detail this page
- * actually has: the href is a redirect wrapper, its query separator is HTML-encoded as `&amp;`, the
- * target is percent-encoded, and the snippet is peppered with `<b>` tags around the query terms.
+ * Captured from the live endpoint: the redirect wrapper, `&amp;` separator, percent-encoded target
+ * and `<b>` tags are all real.
  */
 private val FIXTURE = """
 <div class="results">
@@ -38,8 +35,6 @@ class DuckDuckGoParserTest {
 
     @Test
     fun theRedirectWrapperIsUnwrappedToTheRealUrl() {
-        // The model may want to fetch_url one of these next, and DuckDuckGo's `/l/?uddg=` wrapper
-        // is useless for that.
         val results = DuckDuckGoParser.parse(FIXTURE)
 
         assertEquals("https://kotlinlang.org/multiplatform/", results[0].url)
@@ -53,22 +48,17 @@ class DuckDuckGoParserTest {
 
     @Test
     fun markupThatNoLongerMatchesYieldsNothing() {
-        // The signal the tool turns into a loud failure — but only once the two innocent
-        // explanations below have been ruled out.
         assertTrue(DuckDuckGoParser.parse("<div>redesigned page</div>").isEmpty())
     }
 
     @Test
     fun apageThatMeansItFoundNothingSaysSo() {
-        // What separates "your query matched nothing" from "this parser is broken". Without it the
-        // tool told the model its own tools had stopped working.
         assertTrue(DuckDuckGoParser.isNoResultsPage("""<div class="no-results">No results.</div>"""))
         assertTrue(!DuckDuckGoParser.isNoResultsPage(FIXTURE))
     }
 
     @Test
     fun theAntiBotInterstitialIsRecognised() {
-        // Arrives as 202, which reads as success, so the body is the only thing that gives it away.
         assertTrue(DuckDuckGoParser.isChallengePage("""<script src="/dist/anomaly.js"></script>"""))
         assertTrue(!DuckDuckGoParser.isChallengePage(FIXTURE))
     }

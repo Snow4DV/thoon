@@ -2,7 +2,6 @@ package com.mvlog.agent.impl.domain.entity
 
 internal enum class AgentRunStatus {
 
-    /** Accepted and durable, not picked up by the coordinator yet. */
     Queued,
 
     Running,
@@ -13,10 +12,6 @@ internal enum class AgentRunStatus {
 
     Cancelled,
 
-    /**
-     * Was [Running] when the process died. Distinct from [Failed] so recovery can treat it
-     * differently once checkpointing exists.
-     */
     Interrupted,
     ;
 

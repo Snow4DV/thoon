@@ -1,6 +1,5 @@
 package com.mvlog.agent.impl.data.memory
 
-import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.AgentRunId
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.impl.domain.entity.AgentRun
@@ -9,18 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Process-lifetime backing store for the agent subsystem.
- *
- * Exists so the whole pipeline — api, use cases, coordinator, run execution, UI — can be built and
- * exercised before database creation is solved. The Room-backed repositories implement the same
- * interfaces and swap in without touching anything above them. The one behaviour this cannot
- * provide is survival across process death.
- *
- * [chats] and [runs] are a single shared state so that operations spanning both (accepting a
- * prompt) can be made atomic under [mutex], mirroring the `@Transaction` the Room implementation
- * uses.
- */
+/** Process-lifetime projection of timelines and the run queue; rebuilt from storage on hydrate. */
 internal class InMemoryAgentStore {
 
     val mutex = Mutex()

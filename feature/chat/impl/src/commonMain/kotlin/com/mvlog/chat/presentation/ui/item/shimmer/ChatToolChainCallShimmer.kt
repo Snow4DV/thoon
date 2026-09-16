@@ -15,10 +15,6 @@ import androidx.compose.ui.unit.sp
 import com.mvlog.ui.ThoonPreview
 import com.mvlog.ui.shimmer.TextShimmer
 
-/**
- * Mirrors [com.mvlog.chat.presentation.ui.item.ChatToolChainCall]'s icon + tool name/action +
- * status header row.
- */
 @Composable
 fun ChatToolChainCallShimmer(modifier: Modifier = Modifier) {
     Row(

@@ -37,10 +37,8 @@ interface AgentConfigDao : ThoonDao {
     suspend fun upsertSettings(settings: AgentSettingsEntity)
 
     /**
-     * Deletes a configuration and clears the default if it pointed at it.
-     *
-     * One transaction so the default can never briefly reference a row that no longer exists.
-     * Chat overrides pointing at it are cleared separately, by the use case that owns both sides.
+     * One transaction, so the default never points at a deleted row. Chat overrides are the use
+     * case's job.
      */
     @Transaction
     suspend fun deleteAndDetach(configId: String) {
@@ -50,8 +48,4 @@ interface AgentConfigDao : ThoonDao {
             upsertSettings(settings.copy(defaultConfigId = null))
         }
     }
-
-
-
-
 }

@@ -11,11 +11,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 /**
- * The mapper is the only place a configuration's protocol survives a restart.
- *
- * The fixture used by [AgentConfigTest] holds configurations in memory, so nothing else ever
- * encodes one — a wrong `@SerialName` or a missing `when` branch would be invisible until a real
- * device reopened the database and got back the wrong variant, or nothing at all.
+ * Nothing else encodes a config: the fixture is in-memory, so a wrong @SerialName only shows on a
+ * real reopen.
  */
 class AgentConfigMapperTest {
 
@@ -48,8 +45,7 @@ class AgentConfigMapperTest {
 
     @Test
     fun eachProtocolDecodesBackAsItself() {
-        // One discriminator shared by two variants would decode as whichever is listed first,
-        // silently pointing a saved configuration at the wrong client.
+        // One discriminator shared by two variants would decode as whichever is listed first.
         val drafts = listOf<AgentConfigDraft>(
             AgentConfigDraft.OpenAiCompatible(name = "A", modelId = "m", apiKey = "k"),
             AgentConfigDraft.Anthropic(name = "B", modelId = "m", apiKey = "k"),

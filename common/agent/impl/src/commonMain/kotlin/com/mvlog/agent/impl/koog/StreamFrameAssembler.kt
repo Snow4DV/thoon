@@ -6,13 +6,7 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import com.mvlog.agent.impl.util.AgentClock
 
-/**
- * Rebuilds the assistant reply a stream described.
- *
- * Named after the helper Koog is expected to ship eventually — it does not exist in 1.1.1, verified
- * against every artifact — so that adopting the library's version later is a deletion, not a
- * rewrite of the call site.
- */
+/** Named for the helper Koog 1.1.1 lacks; adopting theirs is a deletion. */
 internal fun List<StreamFrame>.toMessageResponse(clock: AgentClock): Message.Assistant {
     val assembler = StreamFrameAssembler()
     forEach(assembler::accept)
@@ -23,13 +17,8 @@ internal fun List<StreamFrame>.toMessageResponse(clock: AgentClock): Message.Ass
 }
 
 /**
- * Rebuilds an assistant reply from the frames that streamed it.
- *
- * Text, reasoning and tool calls are all carried back into the message, which is what lets the model
- * see its own prior tool usage on the next turn — accumulating text alone would silently drop it.
- *
- * Complete frames win over the deltas that preceded them: providers may resend a whole section, and
- * appending both would duplicate it.
+ * Tool calls and reasoning go back into the message too, or the model never sees its own prior
+ * calls. Complete frames win over their deltas: providers may resend a whole section.
  */
 internal class StreamFrameAssembler {
 
@@ -80,10 +69,7 @@ internal class StreamFrameAssembler {
 
     fun metaInfo(): ResponseMetaInfo? = metaInfo
 
-    /**
-     * Reasoning first, then text, then tool calls — the order providers use, and the order that
-     * reads correctly when the parts are replayed.
-     */
+    /** Provider order: reasoning, text, tool calls. */
     fun parts(): List<MessagePart.ResponsePart> = buildList {
         completedReasoning.values.forEach(::add)
         reasoningDeltas.forEach { (id, builder) ->

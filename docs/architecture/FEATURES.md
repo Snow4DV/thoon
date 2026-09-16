@@ -15,6 +15,11 @@ A screen that is only ever reached from inside its own feature does not need to 
 lives in `impl` next to its presenter (`AgentConfigListScreen`, `AgentConfigEditorScreen`). The api
 module publishes the door; the rooms behind it are the feature's business.
 
+`UiState` and event types are top-level in `impl`, never nested inside the api `Screen`. The api
+module is a navigation key; nesting the state there would make every feature that merely navigates
+to the screen compile against its presentation model. Circuit never needs the link: its factories
+are star-projected, and only the `Screen` crosses the module boundary.
+
 ## DI — hand-rolled, no framework
 
 Each module follows one template. For a feature named `Foo`, `feature/foo/impl/di/` holds six files:
@@ -66,8 +71,14 @@ class ChatInitializer : BaseInitializer(tag = TAG) {
 **Every DI type is `internal` except the initializer** — that is what stops another module reaching
 past the holder. Providers are `get()` properties (fresh each access) unless something must be a
 singleton — a coordinator owning live jobs, a mutex registry — which is `by lazy` with a comment
-saying why. `ApiComponentHolder.get()` caches on first call; `reset()` (tests only) clears the
-instance but keeps the provider.
+saying why. `ApiComponentHolder.get()` caches on first call; `reset()` clears the instance but keeps the
+provider.
+
+Two holder kinds exist. `ApiComponentHolder` has its provider set by an initializer and is what
+features use. `LazyComponentHolder` builds itself in `build()` and needs no initializer; the leaf
+utility modules (`common:network`, `common:serialization`, `common:coroutines`) use it. Every holder's
+`reset()` and `set(instance)`, and every collector's `reset()`, are test seams only: a process
+registers once, at startup.
 
 ## Navigation — Circuit, resolved by collector
 
@@ -106,7 +117,13 @@ the contract, not a fallback: Circuit asks every registered factory in turn, so 
 for a foreign screen would shadow the one that owns it. Every feature has a `*FactoriesTest` that
 pins this.
 
+`ScreenFactory` bundles the presenter factory and the UI factory as one value because
+`Presenter<*>` and `Ui<*>` are star-projected: handed over separately, one could be registered
+without the other, and the miss would only show up on navigation.
+
 ## Extension points
+
+A collector is written only from a `BaseInitializer.init()`; nothing else calls `collect`.
 
 Four collectors. Three are **non-draining**; one drains. Getting that wrong is a real bug class.
 

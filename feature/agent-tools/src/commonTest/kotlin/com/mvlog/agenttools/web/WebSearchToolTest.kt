@@ -14,14 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-/**
- * What the tool *says* when it finds nothing.
- *
- * A real chat searched for `"meshersky bulvard"` — a misspelling the model had wrapped in quotes,
- * forcing an exact match that genuinely matched nothing. The tool reported it as "the provider's
- * markup has probably changed", which is a claim about the app rather than about the query. These
- * pin the three cases apart, because only one of them means anything is broken.
- */
 class WebSearchToolTest {
 
     @Test
@@ -29,14 +21,13 @@ class WebSearchToolTest {
         val result = search(NO_RESULTS_PAGE)
 
         assertTrue("No results" in result, was(result))
-        // The model's way out. Without it, the same exact-phrase query is all it can try.
+        // The hint is the model's way out of a quoted misspelling.
         assertTrue("exact match" in result, was(result))
     }
 
     @Test
     fun anAntiBotChallengeIsReportedAsBlockedNotAsBroken() = runTest {
-        // Served as 202, which is inside the 2xx range `isSuccess()` accepts — so before this was
-        // handled it parsed to nothing and was blamed on the markup.
+        // 202 is what the real interstitial returns.
         val error = assertFailsWith<WebToolException> {
             search(CHALLENGE_PAGE, status = HttpStatusCode.Accepted)
         }
@@ -47,8 +38,6 @@ class WebSearchToolTest {
 
     @Test
     fun anUnrecognisedPageIsStillReportedAsABrokenTool() = runTest {
-        // The case the loud error was written for, and the only one that should still raise it:
-        // no results, and no marker saying the provider meant it.
         val error = assertFailsWith<WebToolException> { search("<div>redesigned page</div>") }
 
         assertTrue("markup" in error.message.orEmpty(), was(error.message.orEmpty()))
@@ -80,11 +69,9 @@ class WebSearchToolTest {
     private fun was(value: String) = "was: $value"
 
     private companion object {
-        /** The container class DuckDuckGo puts on a page it means to be empty. */
         const val NO_RESULTS_PAGE =
             """<div class="results"><div class="no-results">No results.</div></div>"""
 
-        /** The 202 interstitial, which names its anomaly check. */
         const val CHALLENGE_PAGE =
             """<html><body><script src="/dist/anomaly.js"></script>challenge</body></html>"""
 

@@ -8,8 +8,6 @@ class HtmlTextTest {
 
     @Test
     fun scriptAndStyleBodiesAreRemovedEntirely() {
-        // Untagging rather than removing these would fill the context window with minified
-        // JavaScript and push the actual page out of it.
         val text = HtmlText.extract(
             """
             <html><head><style>.a{color:red}</style></head>

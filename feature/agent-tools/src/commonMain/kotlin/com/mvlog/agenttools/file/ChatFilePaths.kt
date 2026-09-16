@@ -3,16 +3,7 @@ package com.mvlog.agenttools.file
 import okio.Path
 import okio.Path.Companion.toPath
 
-/**
- * Resolves a model-supplied path inside one chat's folder, or refuses.
- *
- * This is the whole sandbox. The model chooses these strings, and a page it fetched may have
- * suggested them, so `../../` is an expected input rather than a hypothetical one.
- *
- * Lives in commonMain on okio's [Path] — which, unlike `FileSystem.SYSTEM`, is available on every
- * target including wasmJs — so a future OPFS-backed store inherits this check instead of
- * reimplementing the one piece that must not be got wrong twice.
- */
+/** The whole per-chat sandbox; `../` is an expected input. */
 internal object ChatFilePaths {
 
     fun resolve(chatRoot: Path, relativePath: String): Path {
@@ -28,8 +19,7 @@ internal object ChatFilePaths {
             )
         }
 
-        // Normalise first, then confirm containment: `a/../../b` only reveals itself as an escape
-        // once the `..` segments are resolved away.
+        // Normalise before the containment check: `a/../../b` only escapes once resolved.
         val resolved = chatRoot.resolve(candidate).normalized()
         if (!resolved.isWithin(chatRoot)) {
             throw ChatFileException(

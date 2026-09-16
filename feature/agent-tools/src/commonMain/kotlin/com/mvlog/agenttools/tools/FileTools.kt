@@ -7,12 +7,6 @@ import com.mvlog.agent.tool.ThoonAgentTool
 import com.mvlog.agenttools.file.ChatFileStore
 import kotlinx.serialization.json.JsonObject
 
-/**
- * The per-chat file tools.
- *
- * Descriptions are written for the model rather than for a reader of this file: they are the only
- * thing telling it that these files persist, and that they belong to one conversation.
- */
 internal class ListFilesTool(private val store: ChatFileStore) : ThoonAgentTool {
 
     override val spec = AgentToolSpec(
@@ -103,8 +97,6 @@ internal class EditFileTool(private val store: ChatFileStore) : ThoonAgentTool {
             newText = arguments.requireString("new_text"),
         )
 
-        // The excerpt, not just an acknowledgement: it is how the model confirms the edit landed
-        // where it meant, and how an accidental double-apply becomes visible instead of silent.
         return "Edited '${result.path}'. The file now reads:\n\n${result.excerpt}"
     }
 }

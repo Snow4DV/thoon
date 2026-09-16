@@ -15,22 +15,9 @@ import com.mvlog.agent.tool.ThoonAgentTool
 import com.mvlog.log.TLogger
 import kotlinx.serialization.json.JsonObject
 
-/**
- * Turns what features registered into the registry the agent framework understands.
- *
- * This is the only place the two vocabularies meet. Descriptors are written by hand rather than
- * derived by reflection because Koog's reflective tool API (`ToolSet`, `@Tool`, `asTools()`) lives
- * in `jvmCommonMain` and is absent from the iOS klib — using it would compile on Android and break
- * the iOS build, the same trap as `openAIClient()`.
- */
 internal class KoogToolRegistryFactory {
 
-    /**
-     * Builds the registry for one chat.
-     *
-     * Per chat rather than per process: a tool is scoped to the conversation it serves, and the
-     * chat id is only known once a run starts.
-     */
+    /** Per chat: tools are sandboxed to one conversation, known only once a run starts. */
     fun create(chatId: String): ToolRegistry {
         val context = ChatToolContext(chatId)
         val tools = AgentToolsCollector.collected().flatMap { provider ->
@@ -53,14 +40,8 @@ internal class KoogToolRegistryFactory {
 }
 
 /**
- * Presents one [ThoonAgentTool] to the framework.
- *
- * The descriptor is passed in rather than generated: `descriptor` is final on `ToolBase`, and the
- * generating constructor would derive a schema from [JsonObject] — which describes "any object" and
- * would tell the model nothing about the arguments this tool actually wants.
- *
- * The result type is `String` because that is what the model reads; [encodeResultToString] is the
- * identity for the same reason.
+ * Descriptor passed in: it is final on ToolBase, and the generating constructor would schema
+ * JsonObject as "any object".
  */
 private class KoogToolAdapter(
     private val tool: ThoonAgentTool,

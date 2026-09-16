@@ -41,12 +41,7 @@ interface AgentCheckpointDao : ThoonDao {
     @Query("DELETE FROM agent_checkpoint WHERE sessionId = :sessionId")
     suspend fun deleteForSession(sessionId: String)
 
-    /**
-     * Drops all but the [keep] newest checkpoints of a session.
-     *
-     * A safety net rather than the primary mechanism — checkpoints are normally cleared wholesale
-     * when a run commits. This only matters if a single run produces more nodes than expected.
-     */
+    /** Safety net for an unusually long run; commit clears the rest. */
     @Query(
         """
         DELETE FROM agent_checkpoint

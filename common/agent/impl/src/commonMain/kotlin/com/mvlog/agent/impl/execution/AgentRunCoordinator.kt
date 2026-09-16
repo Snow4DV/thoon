@@ -13,12 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Drains queued runs, one worker per chat, for as long as the component lives.
- *
- * Storage is the work queue: prompts become durable rows, and this observes them. That is what
- * makes a run outlive the screen that started it — nothing here is tied to a presenter's lifetime.
- */
 internal class AgentRunCoordinator(
     private val runRepository: AgentRunRepository,
     private val conversationRepository: ConversationRepository,
@@ -48,14 +42,6 @@ internal class AgentRunCoordinator(
         }
     }
 
-    /**
-     * Re-queues work that was accepted but never answered.
-     *
-     * The run queue lives in memory, so nothing about a previous process survives into this one.
-     * What does survive is the conversation, and deciding what it is still waiting on is
-     * [RetryChatUseCase]'s job — the same one the retry button calls, so a relaunch and a tap can
-     * never disagree.
-     */
     private suspend fun requeueUnansweredPrompts() {
         conversationRepository.chatsWithUnansweredPrompts().forEach { chatId ->
             if (retryChat(chatId)) {
@@ -73,12 +59,7 @@ internal class AgentRunCoordinator(
         }
     }
 
-    /**
-     * Executes every queued run for one chat, in order, until none remain.
-     *
-     * Draining in a loop rather than one run per emission means prompts queued while a run is in
-     * flight are picked up without waiting for another notification.
-     */
+    // Loops rather than one run per emission: a prompt queued mid-run needs no second notification.
     private suspend fun drain(chatId: ChatId) {
         while (true) {
             val run = runRepository.nextQueuedRun(chatId) ?: break

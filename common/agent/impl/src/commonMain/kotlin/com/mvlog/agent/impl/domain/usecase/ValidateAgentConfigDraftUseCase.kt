@@ -3,12 +3,6 @@ package com.mvlog.agent.impl.domain.usecase
 import com.mvlog.agent.api.model.AgentConfigDraft
 import com.mvlog.agent.api.model.AgentConfigError
 
-/**
- * Rejects drafts that could not produce a working client, before anything is stored.
- *
- * Validation lives here rather than in the api module so the rules are enforced for every caller,
- * not just ones that remember to check.
- */
 internal class ValidateAgentConfigDraftUseCase {
 
     operator fun invoke(draft: AgentConfigDraft): AgentConfigError? {
@@ -26,24 +20,18 @@ internal class ValidateAgentConfigDraftUseCase {
                 draft.baseUrl.validateAsUrl()
             }
 
-            // No key — Ollama does not authenticate — but the endpoint is mandatory: its default
-            // is localhost, which on a phone or emulator is the device rather than the host.
+            // Endpoint required: Koog's default is localhost, which on a device is the device.
             is AgentConfigDraft.Ollama -> {
                 if (draft.baseUrl.isBlank()) return AgentConfigError.MissingBaseUrl
                 draft.baseUrl.validateAsUrl()
             }
 
-            // No key: an on-device engine has no endpoint to authenticate against.
             is AgentConfigDraft.Local ->
                 if (draft.engineId.isBlank()) AgentConfigError.BlankEngineId else null
         }
     }
 
-    /**
-     * A deliberately shallow check — scheme plus a host. Anything stricter would reject valid
-     * private hosts (`http://192.168.1.5:1234`, `http://localhost:11434/v1`) that are exactly the
-     * reason custom endpoints exist.
-     */
+    // Scheme + host only: stricter checks reject the private hosts custom endpoints exist for.
     private fun String?.validateAsUrl(): AgentConfigError? {
         val value = this?.trim() ?: return null
         if (value.isEmpty()) return null

@@ -54,13 +54,6 @@ internal class RoomChatMetadataRepository(
         dao.clearConfigOverrides(configId.value)
     }
 
-    /**
-     * A blank query lists everything rather than matching nothing, so a search field can drive this
-     * directly without the caller switching between two sources.
-     *
-     * The query is lowercased here because the stored column is: SQLite's `LIKE` folds case for
-     * ASCII only, so 'привет' would otherwise never find 'Привет'.
-     */
     override fun search(query: String): Flow<List<ChatMetadataMatch>> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
@@ -69,8 +62,6 @@ internal class RoomChatMetadataRepository(
             }
         }
 
-        // Lowercased to match `textLower`, then escaped: the order matters only in that both must
-        // happen, and escaping cannot change the case of anything it introduces.
         return dao.search(query = escapeLike(trimmed.lowercase()), limit = SEARCH_LIMIT)
             .map { rows ->
                 rows.groupBy { it.chat.id }
@@ -108,18 +99,11 @@ internal class RoomChatMetadataRepository(
     )
 }
 
-/**
- * A common word matches every message there is, and this is a full scan — `LIKE '%…%'` cannot use an
- * index. The cap bounds what crosses the flow and gets mapped, not the scan itself.
- */
+/** Bounds what crosses the flow and gets mapped, not the LIKE scan itself. */
 private const val SEARCH_LIMIT = 200
 
 /**
- * How many hits one chat may contribute.
- *
- * Without it a single long conversation fills the entire list and every other chat that matched is
- * invisible. `groupBy` preserves encounter order, so the survivors are the earliest matches of each
- * chat in the query's own ordering. The trade-off is real and worth stating: a chat whose matches
- * all fall past the global limit contributes nothing at all.
+ * One long chat must not fill the list. Applied after SEARCH_LIMIT, so a chat whose matches all
+ * fall past it shows nothing.
  */
 private const val MATCHES_PER_CHAT = 5

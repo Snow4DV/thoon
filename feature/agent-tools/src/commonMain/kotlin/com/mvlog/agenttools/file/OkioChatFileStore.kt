@@ -5,12 +5,6 @@ import kotlinx.coroutines.withContext
 import okio.FileSystem
 import okio.Path
 
-/**
- * A chat's files on a real device filesystem.
- *
- * Every okio call here blocks, so all of them are moved off the caller's thread. That is also why
- * [ChatFileStore] suspends: the alternative is a run stalling the UI while a model reads a file.
- */
 internal class OkioChatFileStore(
     private val fileSystem: FileSystem,
     private val root: Path,
@@ -41,8 +35,8 @@ internal class OkioChatFileStore(
 
         val size = fileSystem.metadataOrNull(file)?.size ?: 0L
         if (size > MAX_READ_BYTES) {
-            // Refusing beats truncating: a silently clipped file would have the model reasoning
-            // about content it cannot see and reporting conclusions drawn from half a document.
+            // Refuse rather than truncate: a clipped file has the model reasoning about text it
+            // cannot see.
             throw ChatFileException(
                 "'$path' is $size bytes, over the $MAX_READ_BYTES byte limit for reading.",
             )
@@ -80,8 +74,7 @@ internal class OkioChatFileStore(
             )
         }
 
-        // Ambiguity is refused rather than resolved: replacing the first of several matches is a
-        // coin flip the caller did not ask for, and the model can disambiguate with more context.
+        // Refuse ambiguity: replacing the first of several is a guess the caller did not make.
         if (original.indexOf(oldText, first + 1) >= 0) {
             throw ChatFileException(
                 "old_text appears more than once in '$path'. Include enough surrounding text to " +
@@ -102,18 +95,10 @@ internal class OkioChatFileStore(
     private companion object {
         const val CHATS_DIRECTORY = "chats"
 
-        /** Enough for notes and short documents; not enough to bury a context window. */
         const val MAX_READ_BYTES = 256 * 1024L
-
     }
 }
 
-/**
- * The changed region plus a little of what surrounds it.
- *
- * Returned to the model so an edit is legible rather than a bare "ok" — including when a resumed
- * turn has applied it twice, which the surrounding text is what reveals.
- */
 private fun String.excerptAround(start: Int, length: Int, context: Int = 200): String {
     val from = maxOf(0, start - context)
     val to = minOf(this.length, start + length + context)

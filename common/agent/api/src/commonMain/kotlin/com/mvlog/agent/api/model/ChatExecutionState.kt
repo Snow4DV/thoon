@@ -1,10 +1,8 @@
 package com.mvlog.agent.api.model
 
 /**
- * Derived view of what the agent is currently doing for a chat.
- *
- * Intentionally does not expose individual runs: consumers should render progress,
- * not reconstruct the execution queue.
+ * Per-chat progress; deliberately hides individual runs — render progress, do not rebuild the
+ * queue.
  */
 sealed interface ChatExecutionState {
 
@@ -17,7 +15,7 @@ sealed interface ChatExecutionState {
     ) : ChatExecutionState {
 
         enum class Phase {
-            /** Accepted and persisted, execution not started yet. */
+            /** Persisted; no worker has picked it up yet. */
             Starting,
 
             Running,

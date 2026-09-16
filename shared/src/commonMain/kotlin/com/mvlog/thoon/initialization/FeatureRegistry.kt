@@ -13,7 +13,6 @@ class FeatureRegistry {
 
     private val featureInitializers
         get() = listOf<BaseInitializer>(
-            // Order-independent: every holder builds lazily on first access.
             DatabaseInitializer(),
             ThoonAgentInitializer(),
             AgentToolsInitializer(),

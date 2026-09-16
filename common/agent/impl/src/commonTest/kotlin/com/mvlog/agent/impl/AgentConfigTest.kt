@@ -6,13 +6,10 @@ import com.mvlog.agent.api.model.AgentConfigError
 import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.AgentConfigResult
 import com.mvlog.agent.api.model.ChatExecutionState
-import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.api.model.errorOrNull
 import com.mvlog.agent.api.model.getOrNull
 import com.mvlog.agent.impl.di.ThoonAgentComponentImpl
 import com.mvlog.agent.impl.fake.TestAgentModule
-import com.mvlog.agent.impl.util.AgentClock
-import com.mvlog.agent.impl.util.IdGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -142,7 +139,6 @@ class AgentConfigTest {
 
     @Test
     fun privateHostsAreAcceptedAsBaseUrls() = configTest {
-        // The whole point of a custom endpoint is reaching hosts a strict validator would reject.
         createConfig(openAi("LM Studio", baseUrl = "http://192.168.1.5:1234/v1")).expectSuccess()
         createConfig(openAi("Ollama", baseUrl = "http://localhost:11434/v1")).expectSuccess()
 
@@ -151,8 +147,6 @@ class AgentConfigTest {
 
     @Test
     fun ollamaRequiresAnEndpointBecauseItsDefaultIsUnreachable() = configTest {
-        // Koog defaults to http://localhost:11434, which on a phone or emulator is the device
-        // itself. Saving a blank URL would look fine and then fail at prompt time.
         assertEquals(
             AgentConfigError.MissingBaseUrl,
             createConfig(ollama(baseUrl = "  ")).errorOrNull(),
@@ -257,6 +251,5 @@ class AgentConfigTest {
             scope.cancel()
         }
     }
-
 
 }

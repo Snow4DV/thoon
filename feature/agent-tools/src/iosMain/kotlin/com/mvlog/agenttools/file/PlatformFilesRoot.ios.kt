@@ -8,11 +8,7 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 
-/**
- * Documents rather than Caches, for the same reason the database uses it: the system may evict
- * Caches under storage pressure, and a note the user asked the agent to keep should not vanish
- * because the device ran low on space.
- */
+/** Documents, not Caches: Caches can be evicted under storage pressure. */
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun platformFilesRoot(): Path {
     val url: NSURL = NSFileManager.defaultManager.URLForDirectory(

@@ -25,9 +25,6 @@ class ScreenFactoriesCollectorTest {
 
     @Test
     fun theProviderIsNotInvokedUntilTheScreenIsAskedFor() {
-        // The whole reason for keying by screen type. A collector that built eagerly would
-        // construct every feature's component during startup, and the regression would be
-        // invisible — nothing breaks, launch is just slower.
         var built = 0
         ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) {
             built++
@@ -53,8 +50,6 @@ class ScreenFactoriesCollectorTest {
 
     @Test
     fun readingDoesNotConsume() {
-        // The opposite of AppOnCreateActionsCollector, which drains because its actions run once.
-        // Draining here would route the first navigation and lose every one after it.
         ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) { screenFactory() }
 
         assertNotNull(ScreenFactoriesCollector.obtain(RegisteredScreen::class))

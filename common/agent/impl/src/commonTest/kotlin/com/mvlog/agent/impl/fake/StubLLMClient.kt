@@ -18,29 +18,10 @@ import kotlinx.coroutines.flow.flow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-/**
- * An LLM that answers from a script instead of a network.
- *
- * Lets a test drive the real agent — real graph, real features, real storage — and assert what the
- * framework does around it: when checkpoints are written, when history is committed, what survives
- * a failure. The only thing replaced is the model itself.
- *
- * [prompts] records what the model was actually asked, which is how a test proves that a restored
- * conversation reached it.
- */
 @OptIn(ExperimentalTime::class)
 internal class StubLLMClient(
-    /**
-     * One script per turn, in order.
-     *
-     * More than one because the agent loops: a turn that asks for a tool is followed by another
-     * request once the result comes back. A single script would answer every turn identically, and
-     * a script containing a tool call would then loop until the run hit its budget.
-     *
-     * The last script repeats, so a single-turn test needs no padding.
-     */
+    /** One script per turn; the last one repeats, so a single-turn test needs no padding. */
     private vararg val scripts: List<StreamFrame>,
-    /** Thrown after emitting [failAfterFrames] frames, to simulate a run dying mid-stream. */
     private val failAfterFrames: Int? = null,
 ) : LLMClient() {
 

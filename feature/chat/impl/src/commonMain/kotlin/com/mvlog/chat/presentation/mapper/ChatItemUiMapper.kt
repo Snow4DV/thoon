@@ -5,12 +5,6 @@ import com.mvlog.chat.presentation.item.ChatItem
 import kotlinx.collections.immutable.persistentListOf
 import com.mvlog.agent.api.model.ChatItem as AgentChatItem
 
-/**
- * Maps the agent's timeline contract onto the model this screen renders.
- *
- * The two are intentionally separate: the agent model is a domain contract shared by every
- * consumer, while this one carries presentation concerns such as expansion state and markdown.
- */
 internal fun AgentChatItem.toUi(
     expandedIds: Set<String>,
 ): ChatItem = when (this) {
@@ -33,7 +27,7 @@ internal fun AgentChatItem.toUi(
     is AgentChatItem.Reasoning -> ChatItem.Thought(
         id = id,
         createdAt = createdAt,
-        // The agent emits reasoning as one stream; the UI shows discrete lines.
+        // One reasoning stream becomes one bullet per line.
         thoughts = text.split("\n").filter { it.isNotBlank() },
         isExpanded = id in expandedIds,
     )

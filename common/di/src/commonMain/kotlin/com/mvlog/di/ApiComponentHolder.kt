@@ -3,9 +3,6 @@ package com.mvlog.di
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 
-/**
- * Component that is set in `BaseInitiailizer` and is only reset explicitly
- */
 abstract class ApiComponentHolder<T : Any> : SettableComponentHolder<T> {
 
     private val lock = SynchronizedObject()

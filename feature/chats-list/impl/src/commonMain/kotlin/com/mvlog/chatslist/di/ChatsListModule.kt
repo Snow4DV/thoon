@@ -4,9 +4,6 @@ import com.mvlog.chatslist.presentation.ChatsListPresenterFactory
 import com.mvlog.chatslist.presentation.ChatsListUiFactory
 import com.mvlog.navigation.screen.ScreenFactory
 
-/**
- * Everything the chats-list feature builds for itself.
- */
 internal interface ChatsListModule {
 
     val screenFactory: ScreenFactory

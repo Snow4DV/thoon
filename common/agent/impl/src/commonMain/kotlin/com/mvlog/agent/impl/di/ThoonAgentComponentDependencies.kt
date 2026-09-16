@@ -11,16 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.Json
 
-/**
- * The graph's inputs: what the module is handed rather than what it builds.
- *
- * Most members are a lookup against another subsystem's holder; the rest are ambient sources — time
- * and identity — that tests replace to make behaviour deterministic. Nothing here is part of the
- * agent's own wiring, so this file stays a readable list of what the module depends on.
- *
- * Resolution happens per access rather than up front, so simply building a component does not force
- * another subsystem to initialise.
- */
 internal interface ThoonAgentComponentDependencies {
 
     val processScope: CoroutineScope

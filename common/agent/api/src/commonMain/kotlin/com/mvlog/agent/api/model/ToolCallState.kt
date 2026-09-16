@@ -1,11 +1,5 @@
 package com.mvlog.agent.api.model
 
-/**
- * Lifecycle of a single tool invocation.
- *
- * Terminal states carry their payload so consumers can render a result or an error
- * without consulting a separate nullable field.
- */
 sealed interface ToolCallState {
 
     /** Requested by the model, not started yet. */

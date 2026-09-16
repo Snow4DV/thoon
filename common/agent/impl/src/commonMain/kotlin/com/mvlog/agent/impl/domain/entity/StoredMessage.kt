@@ -1,14 +1,5 @@
 package com.mvlog.agent.impl.domain.entity
 
-/**
- * A conversation turn as storage holds it.
- *
- * Deliberately not an agent-framework `Message`: `ChatHistoryRepository` lives in the domain layer,
- * and letting the framework's types reach it would spread that dependency through storage. Only the
- * codec knows how to turn these into messages and back.
- *
- * [metaInfoJson] and [StoredPart.payloadJson] are opaque strings here for the same reason.
- */
 internal data class StoredMessage(
     val id: String,
     val sequence: Long,
@@ -21,7 +12,6 @@ internal data class StoredPart(
     val id: String,
     val sequence: Long,
     val kind: StoredPartKind,
-    /** Text parts only — the one thing a search should ever match. */
     val text: String?,
     val toolName: String?,
     val payloadJson: String,

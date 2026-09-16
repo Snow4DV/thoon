@@ -2,19 +2,13 @@ package com.mvlog.agent.api.model
 
 import kotlin.time.Instant
 
-/**
- * A single entry of the agent conversation timeline, as seen by feature modules.
- */
 sealed interface ChatItem {
 
     val id: String
 
     /**
-     * Which stored turn this came from, or null while a run is still producing it.
-     *
-     * Several items can share one value — a turn holding reasoning, a reply and a tool call becomes
-     * three. It exists so a search result, which knows a message and not a rendered item, can say
-     * which part of a conversation it means; [id] is a counter over visible items and cannot.
+     * The stored turn this came from; null while still streaming. Every item from one turn shares
+     * it.
      */
     val messageSequence: Long?
 
@@ -35,9 +29,7 @@ sealed interface ChatItem {
         val isStreaming: Boolean,
     ) : ChatItem
 
-    /**
-     * Reasoning emitted by the provider itself, not internal agent bookkeeping.
-     */
+    /** The provider's own reasoning stream, not agent bookkeeping. */
     data class Reasoning(
         override val id: String,
         override val messageSequence: Long?,

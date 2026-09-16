@@ -6,13 +6,7 @@ import com.mvlog.agent.impl.domain.repository.ChatHistoryRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Holds whole conversations rather than diffing them.
- *
- * The Room implementation appends only what is new and falls back to a rewrite when the incoming
- * conversation no longer extends what it holds; that logic has its own tests. Repeating it here
- * would mean these tests passing against a second implementation of the thing under test.
- */
+/** Stores the whole conversation; the append/rewrite diff is Room's and has its own tests. */
 internal class InMemoryChatHistoryRepository : ChatHistoryRepository {
 
     private val mutex = Mutex()

@@ -3,13 +3,10 @@ package com.mvlog.agenttools.tools
 import com.mvlog.agent.tool.ChatToolContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Reading arguments a model wrote, which is not the same as reading arguments a compiler checked.
- *
- * A missing or wrong-typed field is routine — models produce them — so it must come back as a
- * sentence the model can act on rather than a cast exception it never sees.
+ * Model-written arguments are routinely missing or mistyped; the message is what the model reads
+ * back.
  */
 internal class MissingArgumentException(message: String) : Exception(message)
 

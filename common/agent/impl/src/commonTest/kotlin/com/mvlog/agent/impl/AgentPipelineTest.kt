@@ -6,8 +6,6 @@ import com.mvlog.agent.api.model.ChatItem
 import com.mvlog.agent.api.model.ChatState
 import com.mvlog.agent.impl.di.ThoonAgentComponentImpl
 import com.mvlog.agent.impl.fake.TestAgentModule
-import com.mvlog.agent.impl.util.AgentClock
-import com.mvlog.agent.impl.util.IdGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -23,20 +21,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-/**
- * Exercises the full pipeline against the in-memory store: acceptance, queued execution,
- * per-chat ordering and cancellation.
- *
- * Harness note: the agent scope and the state collector are children of the *test* scope rather
- * than `backgroundScope`, because `advanceUntilIdle()` does not run `backgroundScope` coroutines —
- * those only progress while the test body itself is suspended.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AgentPipelineTest {
 
     @Test
     fun acceptedPromptIsVisibleBeforeAnythingExecutesIt() = pipelineTest(startRuntime = false) {
-        // Runtime deliberately not started: this asserts what `prompt()` alone guarantees.
         sendPrompt(chatId, "hello")
         advanceUntilIdle()
 
@@ -80,8 +69,7 @@ class AgentPipelineTest {
             }
         }
 
-        // Both prompts are accepted before either runs, so both appear ahead of any answer; the
-        // answers then follow in the order the prompts were queued.
+        // Both accepted before either runs, so both prompts precede both answers.
         assertEquals(listOf("first", "second", "You said: first", "You said: second"), texts)
     }
 
@@ -135,18 +123,12 @@ class AgentPipelineTest {
         fun advanceTimeBy(milliseconds: Long) = testScope.advanceTimeBy(milliseconds)
     }
 
-    /**
-     * Builds a component on a cancellable child of the test scope so every coroutine it starts —
-     * coordinator, workers, the state collector — is torn down when the test ends.
-     */
     private fun pipelineTest(
         startRuntime: Boolean = true,
         body: suspend Fixture.() -> Unit,
     ): TestResult = runTest {
         val scope = CoroutineScope(coroutineContext + Job())
         try {
-            // In-memory storage and an echo runner: these tests exercise the runtime — queueing,
-            // ordering, streaming, cancellation — not persistence or configuration resolution.
             val component = ThoonAgentComponentImpl(
                 module = TestAgentModule(agentScope = scope, echoRuns = true),
             )

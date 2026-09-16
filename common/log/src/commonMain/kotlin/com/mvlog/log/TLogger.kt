@@ -3,9 +3,6 @@ package com.mvlog.log
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 
-/**
- * App-wide logger
- */
 object TLogger {
 
     fun log(severity: Severity, tag: String, throwable: Throwable?, message: String) {

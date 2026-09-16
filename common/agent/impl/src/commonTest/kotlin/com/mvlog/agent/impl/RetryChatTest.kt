@@ -22,14 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
-/**
- * Retry is the only way back from a failed run within a session — a chat that fails for want of a
- * configuration used to need an app restart, because startup recovery was the sole caller of this
- * logic.
- *
- * What is asserted here is mostly the *negative* cases: a retry that quietly does nothing looks
- * exactly like one that worked, and leaves someone waiting on a reply nobody queued.
- */
+/** Mostly negative cases: a retry that quietly does nothing looks exactly like one that worked. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RetryChatTest {
 
@@ -84,8 +77,6 @@ class RetryChatTest {
 
         assertTrue(f.module.retryChatUseCase(f.chatId), "an interrupted tool turn is retryable")
 
-        // Blank on purpose: the conversation already holds the tool results the model was about to
-        // read, so re-asking the original question would put it in the transcript twice.
         assertEquals("", f.module.agentRunRepository.nextQueuedRun(f.chatId)?.prompt)
     }
 

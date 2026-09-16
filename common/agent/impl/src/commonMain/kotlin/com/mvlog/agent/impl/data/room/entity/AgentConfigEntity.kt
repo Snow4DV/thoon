@@ -4,12 +4,6 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/**
- * A saved connection profile.
- *
- * Protocol-specific fields (endpoint, key, paths) live in [payloadJson] rather than in nullable
- * columns, so supporting another protocol is a codec change instead of a migration.
- */
 @Entity(
     tableName = "agent_config",
     indices = [Index("kind")],

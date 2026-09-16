@@ -19,6 +19,9 @@ loads. Everything below is what remains.
 
 Recorded rather than deleted, because the shape of it is not obvious from the code.
 
+- [ ] `AppOnCreateAction.tag` is unread today (only `BaseInitializer.tag` is logged, in
+      `FeatureRegistry`). Kept for tracing later; do not remove.
+
 ### 1.1 Startup runs from `App.kt`, not from an `Application` class
 
 `rememberAppStartup()` is an `expect`/`actual` composable in `shared/.../startup/`. The Android
@@ -311,8 +314,10 @@ Linking a framework still fails, and it is environment rather than code: Kotlin/
 **Make the iOS compile part of the normal loop.** It found two bugs the moment it started working,
 both of which had been invisible for a whole session of "the build is green":
 
-- `Dispatchers.IO` is `internal` on Native — JVM/Android only. `common:database` now uses
-  `Dispatchers.Default` there.
+- `Dispatchers.IO` as a *member* is JVM-only; the `kotlinx.coroutines.IO` extension exists on
+  Native and `common:coroutines` uses it. `common:database` keeps `Dispatchers.Default` on iOS
+  because Room serialises its own writes and queries only need to stay off main (see
+  `common/database/AGENTS.md`).
 - A `listOf(...)` of `LLMCapability` objects inferred as `List<Any>` on the Native backend while
   resolving to `List<LLMCapability>` on the JVM. Same source, same compiler version, different
   inference — so **"it compiles on Android" is not evidence that commonMain is correct**.

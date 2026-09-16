@@ -29,17 +29,6 @@ import com.composeunstyled.LocalContentColor
 import com.composeunstyled.theme.Theme
 import com.mvlog.chatslist.presentation.ChatsListTab
 
-/**
- * The floating bar: two tabs and an action.
- *
- * Built here rather than with the library's `NavigationBar`, which is edge-to-edge with a separator
- * above it — the Material shape. This one is a pill that floats clear of the bottom edge, so it is
- * its own container.
- *
- * The plus is not a tab and is not drawn like one: tabs are places you can be, and creating a chat
- * is something you do. Styling it as a third tab would leave the bar showing a selection for a
- * screen nobody is on.
- */
 @Composable
 internal fun ChatsListBottomBar(
     selected: ChatsListTab,
@@ -47,6 +36,8 @@ internal fun ChatsListBottomBar(
     onNewChat: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Not the library NavigationBar: that is edge-to-edge with a separator; this is a floating
+    // pill.
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(percent = 50))
@@ -86,8 +77,8 @@ private fun Tab(
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    // Tint travels through the content lambda rather than a parameter: NavigationBarItem styles its
-    // background for selection, not its content.
+    // NavigationBarItem colours only its background on selection; content tint goes through
+    // LocalContentColor.
     val tint = if (isSelected) Theme[colors][primaryColor] else Theme[colors][mutedColor]
 
     NavigationBarItem(

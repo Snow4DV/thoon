@@ -12,7 +12,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.mvlog.ui.ThoonPreview
 
-/** Mirrors [com.mvlog.chat.presentation.ui.item.ChatUserMessage]'s end-aligned bubble shape. */
 @Composable
 fun ChatUserMessageShimmer(modifier: Modifier = Modifier) {
     BoxWithConstraints(

@@ -14,19 +14,15 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.json.JsonObject
 import com.mvlog.agenttools.tools.requireString
 
-/** Raised so the reason reaches the model as the result, which is what it can act on. */
 internal class WebToolException(message: String) : Exception(message)
 
 /**
- * A browser-ish User-Agent.
- *
- * Not deception: many sites, DuckDuckGo's HTML endpoint included, return a stub page to clients
- * that send none, and a stub page is indistinguishable from a broken tool.
+ * Sites (DuckDuckGo's HTML endpoint included) serve a stub page to clients that send no
+ * User-Agent.
  */
 private const val USER_AGENT =
     "Mozilla/5.0 (compatible; Thoon/0.1; +https://github.com/Snow4DV/thoon)"
 
-/** Enough for an article; not enough for one page to crowd out the conversation. */
 private const val MAX_TEXT_CHARS = 20_000
 
 internal class FetchUrlTool(private val httpClient: HttpClient) : ThoonAgentTool {
@@ -100,9 +96,8 @@ internal class WebSearchTool(private val httpClient: HttpClient) : ThoonAgentToo
 
         val body = response.bodyAsText()
 
-        // Checked before anything is parsed, and deliberately not gated on the status being an
-        // error: the anti-bot interstitial is served as `202 Accepted`, which `isSuccess()` waves
-        // through. Left to fall past here it parses to nothing and gets blamed on the markup.
+        // Before parsing and regardless of status: the interstitial arrives as 202, which
+        // `isSuccess()` accepts.
         if (DuckDuckGoParser.isChallengePage(body)) {
             throw WebToolException(
                 "The search provider served an anti-bot challenge instead of results, so this " +
@@ -113,18 +108,13 @@ internal class WebSearchTool(private val httpClient: HttpClient) : ThoonAgentToo
 
         val results = DuckDuckGoParser.parse(body)
 
-        // An ordinary answer, not an exception. The model's next move is to rephrase, and telling
-        // it the tool is broken is what stops it: a search for `"meshersky bulvard"` matched
-        // nothing because the quotes forced an exact match on a misspelling, and reporting that as
-        // a broken tool sent the model looking for a fault that was not there.
+        // An answer, not a failure: the model's next move is to rephrase.
         if (results.isEmpty() && DuckDuckGoParser.isNoResultsPage(body)) {
             return "No results for '$query'. Try different or less specific terms — quoting a " +
                 "phrase forces an exact match, which fails on a misspelling."
         }
 
         if (results.isEmpty()) {
-            // Neither a challenge nor a marked empty page, so the markup this parses has moved.
-            // Reporting it as "nothing found" would have the model tell the user something false.
             throw WebToolException(
                 "Could not read any results from the search page. The provider's markup has " +
                     "probably changed, so web_search needs fixing — this is not a claim that " +

@@ -23,11 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 
-/**
- * Configuration use cases: the operations a settings screen performs, implemented against storage.
- *
- * Each implements the contract of the same name in `common:agent:api`.
- */
 internal class ObserveAgentConfigsUseCaseImpl(
     private val repository: AgentConfigRepository,
 ) : ObserveAgentConfigsUseCase {
@@ -49,12 +44,6 @@ internal class ObserveDefaultAgentConfigUseCaseImpl(
     override fun invoke(): Flow<AgentConfig?> = repository.observeDefault()
 }
 
-/**
- * The configuration a chat runs on: its own override, else the app default.
- *
- * Composed here rather than stored, because the override belongs to the chat and the default
- * belongs to the configuration store — neither repository can answer this alone.
- */
 internal class ObserveChatConfigUseCaseImpl(
     private val repository: AgentConfigRepository,
     private val metadataRepository: ChatMetadataRepository,
@@ -84,8 +73,6 @@ internal class CreateAgentConfigUseCaseImpl(
         val isFirst = repository.count() == 0
         repository.create(id, draft)
 
-        // The first configuration becomes the default: otherwise a user who adds exactly one is
-        // left with a config that nothing uses, for no reason they can see.
         if (isFirst) repository.setDefault(id)
 
         return AgentConfigResult.Success(id)
@@ -115,8 +102,7 @@ internal class DeleteAgentConfigUseCaseImpl(
 ) : DeleteAgentConfigUseCase {
 
     override suspend fun invoke(id: AgentConfigId) {
-        // Detach before deleting: a chat pointing at a configuration that no longer exists would
-        // resolve to nothing rather than falling back to the default.
+        // Chat overrides are detached here; the DAO only clears the default.
         metadataRepository.clearConfigOverrides(id)
         repository.delete(id)
     }
@@ -152,13 +138,8 @@ internal class SetChatConfigUseCaseImpl(
 }
 
 /**
- * Which configuration a run should use: the chat's override, else the default, else none.
- *
- * Internal to the module — the execution layer needs it, but no screen does, so it has no
- * counterpart in `common:agent:api`.
- *
- * Resolved once per run rather than held, so a run started after a configuration change uses the
- * new value while an in-flight run keeps the one it began with.
+ * No api counterpart: only the executor needs it. Resolved per run, so an in-flight run keeps the
+ * config it began with.
  */
 internal class ResolveAgentConfigUseCase(
     private val repository: AgentConfigRepository,

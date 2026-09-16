@@ -29,12 +29,6 @@ class OkioChatFileStoreTest {
 
     @Test
     fun aDoubleAppliedEditIsVisibleInTheResult() = runTest {
-        // The shape a resumed turn can produce: the run wrote the file, died before recording it,
-        // and the same edit is issued again. `new_text` contains `old_text`, so both the absent and
-        // ambiguous checks pass and the text is genuinely applied twice.
-        //
-        // This is not prevented. The point of the echo is that the duplication reaches the model in
-        // the text it reads back, instead of sitting silently in the file.
         val store = store()
         store.write(CHAT, "notes.md", "## Notes\n")
 
@@ -61,8 +55,6 @@ class OkioChatFileStoreTest {
 
     @Test
     fun editRefusesAnAmbiguousMatch() = runTest {
-        // Replacing the first of several is a coin flip the caller did not ask for, and silently
-        // editing the wrong one is worse than asking for more context.
         val store = store()
         store.write(CHAT, "notes.md", "todo\ntodo\n")
 
