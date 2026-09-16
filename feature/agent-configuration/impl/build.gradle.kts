@@ -2,9 +2,9 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinParcelize)
 }
 
 kotlin {
@@ -15,6 +15,10 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         withHostTestBuilder {
+        }.configure {
+            // Compose's Recomposer reports a composition failure through android.util.Log before
+            // rethrowing it; on the host that call is a stub that throws and hides the real error.
+            isReturnDefaultValues = true
         }
 
         withDeviceTestBuilder {
@@ -23,15 +27,6 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
-        // See feature/chat: `@Parcelize` cannot be imported in commonMain, so screens are marked
-        // with com.mvlog.navigation.CommonParcelize and the plugin is told to treat it as such.
-        // The marker is inert without this.
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-P",
-                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-            )
-        }
     }
 
     val xcfName = "feature:agent-configuration:implKit"
@@ -73,6 +68,9 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                // `presenter.test {}` and `FakeNavigator`; see docs/circuit/PRESENTER.md.
+                implementation(libs.circuit.test)
             }
         }
 

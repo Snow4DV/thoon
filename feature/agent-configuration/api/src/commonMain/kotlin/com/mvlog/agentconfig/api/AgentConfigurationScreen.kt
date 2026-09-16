@@ -1,7 +1,7 @@
 package com.mvlog.agentconfig.api
 
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.screen.Screen
+import kotlinx.serialization.Serializable
 
 /**
  * The settings screen.
@@ -12,5 +12,5 @@ import com.slack.circuit.runtime.screen.Screen
  *
  * [section] null is the root.
  */
-@CommonParcelize
+@Serializable
 data class AgentConfigurationScreen(val section: ConfigurationSection? = null) : Screen

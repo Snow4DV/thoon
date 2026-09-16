@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
-    alias(libs.plugins.kotlinParcelize)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -26,15 +26,6 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
-        // This module declares CommonParcelize, so it also registers it: a `Screen` is Parcelable
-        // on Android, and without this the module could not so much as declare one in its own tests.
-        // https://developer.android.com/kotlin/parcelize#multiplatform
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-P",
-                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-            )
-        }
     }
 
     // For iOS targets, this is also where you should
@@ -68,6 +59,10 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.stdlib)
                 api(libs.circuit.foundation)
+                // The saver: screens are persisted through kotlinx-serialization on every target,
+                // registered one per screen through ScreenFactoriesCollector.
+                api(libs.circuit.serialization)
+                api(libs.kotlinx.serialization.core)
                 // An unregistered screen renders Circuit's fallback rather than failing, so the
                 // dispatcher says so out loud.
                 implementation(project(":common:log"))
@@ -77,6 +72,9 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+                // Exercises the collected serializers module without android.os.Bundle, which is a
+                // stub on the host; see ScreenSaverRoundTripTest.
+                implementation(libs.kotlinx.serialization.json)
             }
         }
 

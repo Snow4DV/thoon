@@ -51,6 +51,9 @@ fun App() {
  * `ScreenFactoriesCollector`, so adding a screen means adding an initializer to `FeatureRegistry`
  * and nothing here. One dispatcher stands in for every feature's factories and resolves by screen
  * type, so a feature's component is not built until something navigates to it.
+ *
+ * The saver comes from the same registrations. It is built here, inside `remember`, which runs
+ * after `rememberAppStartup()` has run every initializer — so the module it snapshots is complete.
  */
 @Composable
 private fun rememberThoonCircuit(): Circuit = remember {
@@ -59,5 +62,6 @@ private fun rememberThoonCircuit(): Circuit = remember {
     Circuit.Builder()
         .addPresenterFactory(screenFactories)
         .addUiFactory(screenFactories)
+        .setCircuitSaver(screenFactories.circuitSaver())
         .build()
 }

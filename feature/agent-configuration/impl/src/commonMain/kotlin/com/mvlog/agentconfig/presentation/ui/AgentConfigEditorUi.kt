@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.ui.components.Button
@@ -24,12 +23,11 @@ import com.composables.ui.theme.destructiveColor
 import com.composables.ui.theme.mutedColor
 import com.composables.ui.theme.secondaryColor
 import com.composeunstyled.theme.Theme
-import com.mvlog.agentconfig.presentation.AgentConfigEditorEvent
+import com.mvlog.agentconfig.presentation.AgentConfigEditorUiEvent.Ui
 import com.mvlog.agentconfig.presentation.AgentConfigEditorUiState
-import com.mvlog.agentconfig.presentation.mapper.ConfigField
+import com.mvlog.agentconfig.presentation.Rejection
 import com.mvlog.agentconfig.presentation.mapper.ConfigKind
 import com.mvlog.agentconfig.presentation.mapper.read
-import com.mvlog.agentconfig.presentation.mapper.write
 import com.mvlog.agentconfig.presentation.mapper.title
 import com.mvlog.agentconfig.presentation.ui.component.ConfigTextField
 import com.mvlog.agentconfig.presentation.ui.component.OptionRow
@@ -47,8 +45,8 @@ internal fun AgentConfigEditorUi(
                 .fillMaxWidth()
                 .background(Theme[colors][secondaryColor])
                 .statusBarsPadding(),
-            title = { Text(if (state.isEditing) "Edit configuration" else "New configuration", fontSize = 20.sp) },
-            onBackClicked = { state.eventSink(AgentConfigEditorEvent.BackClicked) },
+            title = { Text(state.title(), fontSize = 20.sp) },
+            onBackClicked = state.onBack,
             onOptionsClick = null,
         )
 
@@ -61,98 +59,108 @@ internal fun AgentConfigEditorUi(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Protocol", style = ThoonTypography.h3)
-            ConfigKind.entries.forEach { kind ->
+            when (state) {
+                // Nothing to draw yet: a blank form here would invite typing into fields the load
+                // is about to overwrite.
+                is AgentConfigEditorUiState.Loading -> Unit
+
+                is AgentConfigEditorUiState.Error -> Text(
+                    text = state.message,
+                    style = ThoonTypography.caption,
+                    color = Theme[colors][destructiveColor],
+                )
+
+                is AgentConfigEditorUiState.Data -> EditorForm(state)
+            }
+        }
+    }
+}
+
+/** Only a new configuration is ever "new": loading and missing both concern a saved one. */
+private fun AgentConfigEditorUiState.title(): String =
+    if (this is AgentConfigEditorUiState.Data && existing == null) "New configuration" else "Edit configuration"
+
+@Composable
+private fun EditorForm(state: AgentConfigEditorUiState.Data) {
+    Text("Protocol", style = ThoonTypography.h3)
+    ConfigKind.entries.forEach { kind ->
+        OptionRow(
+            title = kind.title(),
+            isSelected = state.form.kind == kind,
+            onSelect = { state.eventSink(Ui.KindSelected(kind)) },
+        )
+    }
+
+    // Only the fields this protocol actually uses. The others are not optional, they are
+    // meaningless — an Ollama endpoint has no API key.
+    state.form.visibleFields.forEach { field ->
+        ConfigTextField(
+            field = field,
+            value = state.form.read(field),
+            error = (state.rejection as? Rejection.Field)?.takeIf { it.field == field }?.message,
+            onValueChange = { value -> state.eventSink(Ui.FieldChanged(field, value)) },
+        )
+    }
+
+    if (state.form.kind == ConfigKind.Local) {
+        if (state.localEngines.isEmpty()) {
+            // Shown rather than hidden: the concept exists and is coming, and a silently
+            // missing option reads as a bug.
+            Text(
+                text = "No on-device engines are available yet. Nothing in the app " +
+                    "implements one, so this cannot be saved.",
+                style = ThoonTypography.caption,
+                color = Theme[colors][mutedColor],
+            )
+        } else {
+            state.localEngines.forEach { engine ->
                 OptionRow(
-                    title = kind.title(),
-                    isSelected = state.form.kind == kind,
-                    onSelect = {
-                        state.eventSink(AgentConfigEditorEvent.FormChanged(state.form.copy(kind = kind)))
-                    },
+                    title = engine.displayName,
+                    isSelected = state.form.engineId == engine.id,
+                    onSelect = { state.eventSink(Ui.EngineSelected(engine.id)) },
                 )
             }
+        }
+    }
 
-            // Only the fields this protocol actually uses. The others are not optional, they are
-            // meaningless — an Ollama endpoint has no API key.
-            state.form.visibleFields.forEach { field ->
-                ConfigTextField(
-                    field = field,
-                    value = state.form.read(field),
-                    error = state.fieldError?.takeIf { it.first == field }?.second,
-                    // The form is read here, in a lambda rebuilt every composition, so an edit
-                    // always applies to the protocol currently selected rather than to whichever
-                    // one was selected when the field first appeared.
-                    onValueChange = { value ->
-                        state.eventSink(
-                            AgentConfigEditorEvent.FormChanged(state.form.write(field, value)),
-                        )
-                    },
-                )
-            }
+    (state.rejection as? Rejection.Screen)?.let {
+        Text(text = it.message, style = ThoonTypography.caption, color = Theme[colors][destructiveColor])
+    }
 
-            if (state.form.kind == ConfigKind.Local) {
-                if (state.localEngines.isEmpty()) {
-                    // Shown rather than hidden: the concept exists and is coming, and a silently
-                    // missing option reads as a bug.
-                    Text(
-                        text = "No on-device engines are available yet. Nothing in the app " +
-                            "implements one, so this cannot be saved.",
-                        style = ThoonTypography.caption,
-                        color = Theme[colors][mutedColor],
-                    )
-                } else {
-                    state.localEngines.forEach { engine ->
-                        OptionRow(
-                            title = engine.displayName,
-                            isSelected = state.form.engineId == engine.id,
-                            onSelect = {
-                                state.eventSink(
-                                    AgentConfigEditorEvent.FormChanged(state.form.copy(engineId = engine.id)),
-                                )
-                            },
-                        )
-                    }
-                }
-            }
+    Button(
+        onClick = { state.eventSink(Ui.SaveClicked) },
+        style = ButtonStyle.Primary,
+        enabled = state.canSave,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(if (state.isBusy) "Saving…" else "Save")
+    }
 
-            state.screenError?.let {
-                Text(text = it, style = ThoonTypography.caption, color = Theme[colors][destructiveColor])
-            }
-
+    state.existing?.let { existing ->
+        if (!existing.isDefault) {
             Button(
-                onClick = { state.eventSink(AgentConfigEditorEvent.SaveClicked) },
-                style = ButtonStyle.Primary,
-                enabled = state.canSave,
+                onClick = { state.eventSink(Ui.MakeDefaultClicked) },
+                style = ButtonStyle.Outlined,
+                enabled = !state.isBusy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save")
+                Text("Use as default")
             }
+        } else {
+            Text(
+                text = "This is the default configuration.",
+                style = ThoonTypography.caption,
+                color = Theme[colors][mutedColor],
+            )
+        }
 
-            if (state.isEditing) {
-                if (!state.isDefault) {
-                    Button(
-                        onClick = { state.eventSink(AgentConfigEditorEvent.MakeDefaultClicked) },
-                        style = ButtonStyle.Outlined,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Use as default")
-                    }
-                } else {
-                    Text(
-                        text = "This is the default configuration.",
-                        style = ThoonTypography.caption,
-                        color = Theme[colors][mutedColor],
-                    )
-                }
-
-                Button(
-                    onClick = { state.eventSink(AgentConfigEditorEvent.DeleteClicked) },
-                    style = ButtonStyle.Ghost,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Delete", color = Theme[colors][destructiveColor])
-                }
-            }
+        Button(
+            onClick = { state.eventSink(Ui.DeleteClicked) },
+            style = ButtonStyle.Ghost,
+            enabled = !state.isBusy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Delete", color = Theme[colors][destructiveColor])
         }
     }
 }

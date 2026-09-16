@@ -58,7 +58,7 @@ internal class AgentConfigListPresenter(
                     subtitle = config.describe().let {
                         if (config.id == defaultId) "Default · $it" else it
                     },
-                    onClick = { navigator.goTo(AgentConfigEditorScreen(config.id.value)) },
+                    onClick = { navigator.goTo(AgentConfigEditorScreen(config.id)) },
                 ),
             )
         }

@@ -10,7 +10,6 @@ import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.screen.Screen
@@ -27,7 +26,6 @@ import kotlin.test.assertNull
  */
 class ChatFactoriesTest {
 
-    @CommonParcelize
     private data object OtherScreen : Screen
 
     @Test
@@ -82,7 +80,7 @@ class ChatFactoriesTest {
             cancelAgentRun = CancelAgentRunUseCase { },
             retryChat = RetryChatUseCase { false },
         ).create(
-            screen = ChatScreen(chatId = "existing"),
+            screen = ChatScreen(chatId = ChatId("existing")),
             navigator = Navigator.NoOp,
             context = CircuitContext.EMPTY,
         )

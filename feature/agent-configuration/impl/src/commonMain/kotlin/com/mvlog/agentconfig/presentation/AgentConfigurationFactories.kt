@@ -1,8 +1,9 @@
 package com.mvlog.agentconfig.presentation
 
+import com.mvlog.agent.api.engine.LocalEngineProvider
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
-import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
@@ -28,7 +29,7 @@ import com.slack.circuit.runtime.ui.ui
  */
 internal class AgentConfigurationPresenterFactory(
     private val observeConfigs: ObserveAgentConfigsUseCase,
-    private val observeConfig: ObserveAgentConfigUseCase,
+    private val getConfig: GetAgentConfigUseCase,
     private val observeDefaultConfig: ObserveDefaultAgentConfigUseCase,
     private val createConfig: CreateAgentConfigUseCase,
     private val updateConfig: UpdateAgentConfigUseCase,
@@ -36,6 +37,11 @@ internal class AgentConfigurationPresenterFactory(
     private val setDefaultConfig: SetDefaultAgentConfigUseCase,
     private val observeChatConfig: ObserveChatConfigUseCase,
     private val setChatConfig: SetChatConfigUseCase,
+    /**
+     * Read when the editor is created, not when the factory is: engines are registered by
+     * initializers, and the registry is meant to be consulted every time the editor opens.
+     */
+    private val localEngineProvider: LocalEngineProvider,
 ) : Presenter.Factory {
 
     override fun create(
@@ -54,7 +60,8 @@ internal class AgentConfigurationPresenterFactory(
         is AgentConfigEditorScreen -> AgentConfigEditorPresenter(
             screen = screen,
             navigator = navigator,
-            observeConfig = observeConfig,
+            localEngines = localEngineProvider.engines(),
+            getConfig = getConfig,
             observeDefaultConfig = observeDefaultConfig,
             createConfig = createConfig,
             updateConfig = updateConfig,

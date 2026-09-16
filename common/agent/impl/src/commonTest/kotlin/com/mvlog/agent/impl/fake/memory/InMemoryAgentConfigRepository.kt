@@ -30,9 +30,6 @@ internal class InMemoryAgentConfigRepository : AgentConfigRepository {
     override fun observeAll(): Flow<List<AgentConfig>> =
         configs.map { all -> all.values.sortedBy { it.name } }.distinctUntilChanged()
 
-    override fun observe(id: AgentConfigId): Flow<AgentConfig?> =
-        configs.map { it[id] }.distinctUntilChanged()
-
     override fun observeDefault(): Flow<AgentConfig?> =
         combine(configs, defaultId) { all, default -> default?.let(all::get) }
             .distinctUntilChanged()

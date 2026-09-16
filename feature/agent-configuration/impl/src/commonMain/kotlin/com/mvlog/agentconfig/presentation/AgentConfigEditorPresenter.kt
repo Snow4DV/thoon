@@ -2,37 +2,49 @@ package com.mvlog.agentconfig.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import com.mvlog.agent.api.engine.LocalEnginesCollector
+import com.mvlog.agent.api.engine.LocalEngine
+import com.mvlog.agent.api.model.AgentConfigError
 import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.errorOrNull
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
-import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
+import com.mvlog.agentconfig.presentation.AgentConfigEditorUiEvent.Ui
 import com.mvlog.agentconfig.presentation.mapper.AgentConfigForm
-import com.mvlog.agentconfig.presentation.mapper.ConfigField
-import com.mvlog.agentconfig.presentation.mapper.ConfigKind
-import com.mvlog.agentconfig.presentation.mapper.field
 import com.mvlog.agentconfig.presentation.mapper.message
 import com.mvlog.agentconfig.presentation.mapper.toDraft
-import com.mvlog.agentconfig.presentation.mapper.toForm
+import com.mvlog.agentconfig.presentation.mapper.write
+import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import kotlinx.collections.immutable.toPersistentList
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/**
+ * Creates or edits one connection profile.
+ *
+ * Holds exactly one thing, an [AgentConfigEditorStateHolder], and asks it for transitions; see
+ * [AgentConfigEditorState] for why the state is one value and the holder for why it is wrapped. Whether the configuration is the default is observed, not held: setting it here
+ * changes storage, and storage is what this screen reads back, so the flag cannot drift from the
+ * truth.
+ *
+ * The draft is *fetched* once, not observed: this is a form, and letting a background write
+ * replace what the user is halfway through typing would be worse than showing a stale value. That
+ * is why the dependency is [GetAgentConfigUseCase] and not a flow.
+ */
 internal class AgentConfigEditorPresenter(
     private val screen: AgentConfigEditorScreen,
     private val navigator: Navigator,
-    private val observeConfig: ObserveAgentConfigUseCase,
+    private val localEngines: List<LocalEngine>,
+    private val getConfig: GetAgentConfigUseCase,
     private val observeDefaultConfig: ObserveDefaultAgentConfigUseCase,
     private val createConfig: CreateAgentConfigUseCase,
     private val updateConfig: UpdateAgentConfigUseCase,
@@ -43,76 +55,85 @@ internal class AgentConfigEditorPresenter(
     @Composable
     override fun present(): AgentConfigEditorUiState {
         val scope = rememberCoroutineScope()
-        val configId = screen.configId?.let(::AgentConfigId)
+        val editor = rememberRetained { AgentConfigEditorStateHolder(screen.configId) }
 
-        var form by remember { mutableStateOf(AgentConfigForm()) }
-        var fieldError by remember { mutableStateOf<Pair<ConfigField, String>?>(null) }
-        var screenError by remember { mutableStateOf<String?>(null) }
-        var isDefault by remember { mutableStateOf(false) }
-
-        // Loaded once rather than collected: this is a form, and letting a background write replace
-        // what the user is halfway through typing would be worse than showing a stale value.
-        LaunchedEffect(configId) {
-            val existing = configId?.let { observeConfig(it).first() }
-            if (existing != null) form = existing.toForm()
-            isDefault = configId != null && observeDefaultConfig().first()?.id == configId
+        LaunchedEffect(screen.configId) {
+            screen.configId?.let { editor.loaded(it, getConfig(it)) }
         }
 
-        val engines = remember { LocalEnginesCollector.obtain().toPersistentList() }
+        val default by remember { observeDefaultConfig() }.collectAsState(initial = null)
+        val engines = remember(localEngines) { localEngines.toPersistentList() }
 
-        return AgentConfigEditorUiState(
-            form = form,
-            localEngines = engines,
-            fieldError = fieldError,
-            screenError = screenError,
-            isEditing = configId != null,
-            isDefault = isDefault,
-            // An on-device configuration cannot be saved while no engine exists to select, which is
-            // the empty registry made visible rather than a silently broken profile.
-            canSave = form.kind != ConfigKind.Local || engines.isNotEmpty(),
-            eventSink = { event ->
-                when (event) {
-                    is AgentConfigEditorEvent.FormChanged -> {
-                        form = event.form
-                        // Clearing on edit: leaving a rejection under a field the user has since
-                        // corrected is how a form starts lying.
-                        fieldError = null
-                        screenError = null
-                    }
+        return when (val current = editor.value) {
+            AgentConfigEditorState.Loading -> AgentConfigEditorUiState.Loading(onBack = navigator::pop)
 
-                    AgentConfigEditorEvent.SaveClicked -> scope.launch {
-                        val result = if (configId == null) {
-                            createConfig(form.toDraft())
-                        } else {
-                            updateConfig(configId, form.toDraft())
-                        }
+            is AgentConfigEditorState.Missing -> AgentConfigEditorUiState.Error(
+                message = AgentConfigError.NotFound(current.id).message(),
+                onBack = navigator::pop,
+            )
 
-                        val error = result.errorOrNull()
-                        if (error == null) {
-                            navigator.pop()
-                        } else {
-                            // Typed validation exists precisely so this can land under the right
-                            // input instead of in a banner saying "invalid".
-                            fieldError = error.field()?.let { it to error.message() }
-                            screenError = if (error.field() == null) error.message() else null
-                        }
-                    }
+            is AgentConfigEditorState.Editing -> AgentConfigEditorUiState.Data(
+                form = current.form,
+                localEngines = engines,
+                rejection = current.rejection,
+                existing = screen.configId?.let { Existing(isDefault = default?.id == it) },
+                isBusy = current.isBusy,
+                canSave = editor.canSave(localEngines),
+                onBack = navigator::pop,
+                eventSink = { handleEvent(it, editor, scope) },
+            )
+        }
+    }
 
-                    AgentConfigEditorEvent.DeleteClicked -> scope.launch {
-                        configId?.let { deleteConfig(it) }
-                        navigator.pop()
-                    }
+    /**
+     * Every event, in one non-composable function.
+     *
+     * Kept out of `present()` so that function reads as observe, hold, return — and so the handling
+     * can be read without Compose in the way. It takes the holder and the scope as parameters rather
+     * than closing over composable locals, which is what keeps it a plain function.
+     */
+    private fun handleEvent(
+        event: AgentConfigEditorUiEvent,
+        stateHolder: AgentConfigEditorStateHolder,
+        scope: CoroutineScope,
+    ) {
+        when (event) {
+            is Ui.KindSelected -> stateHolder.edit { copy(kind = event.kind) }
+            is Ui.FieldChanged -> stateHolder.edit { write(event.field, event.value) }
+            is Ui.EngineSelected -> stateHolder.edit { copy(engineId = event.engineId) }
 
-                    AgentConfigEditorEvent.MakeDefaultClicked -> scope.launch {
-                        configId?.let {
-                            setDefaultConfig(it)
-                            isDefault = true
-                        }
-                    }
-
-                    AgentConfigEditorEvent.BackClicked -> navigator.pop()
+            Ui.SaveClicked -> stateHolder.saveableForm(localEngines)?.let { form ->
+                scope.launch {
+                    stateHolder.busy()
+                    val error = save(screen.configId, form)
+                    if (error == null) navigator.pop() else stateHolder.rejected(error)
                 }
-            },
-        )
+            }
+
+            Ui.DeleteClicked -> screen.configId?.let { id ->
+                if (stateHolder.idleForm() != null) scope.launch {
+                    stateHolder.busy()
+                    deleteConfig(id)
+                    navigator.pop()
+                }
+            }
+
+            Ui.MakeDefaultClicked -> screen.configId?.let { id ->
+                if (stateHolder.idleForm() != null) scope.launch {
+                    stateHolder.busy()
+                    setDefaultConfig(id)
+                    stateHolder.settled()
+                }
+            }
+        }
+    }
+
+    private suspend fun save(configId: AgentConfigId?, form: AgentConfigForm): AgentConfigError? {
+        val result = if (configId == null) {
+            createConfig(form.toDraft())
+        } else {
+            updateConfig(configId, form.toDraft())
+        }
+        return result.errorOrNull()
     }
 }

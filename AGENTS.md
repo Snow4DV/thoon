@@ -18,7 +18,7 @@ turn, which is recovered on next launch.
 
 ```bash
 ./gradlew :androidApp:assembleDebug          # Android app
-./gradlew testAndroidHostTest                # every module's host tests (175 today)
+./gradlew testAndroidHostTest                # every module's host tests (197 today)
 ./gradlew compileKotlinIosSimulatorArm64 compileKotlinIosArm64   # iOS must keep compiling
 ```
 
@@ -43,6 +43,11 @@ cheapest way to find out.
   `<module>/build/test-results/testAndroidHostTest/TEST-<class>.xml` for `tests="N"`, or use
   `--rerun-tasks`. This has bitten before.
 - macOS: there is no `timeout` command; a pipeline starting with it silently runs nothing.
+- **A presenter test that fails with `Method e in android.util.Log not mocked` is hiding the real
+  error.** Compose's Recomposer logs a composition failure through `android.util.Log` before
+  rethrowing it, and on the host that call is a stub that throws first. The module's
+  `withHostTestBuilder {}.configure { isReturnDefaultValues = true }` is what lets the real
+  exception through; copy it into any module that gains presenter tests.
 - Before adding a dependency, look in `~/.gradle/caches/modules-2/files-2.1/` — several libraries
   (kotlinx-datetime among them, until it was made explicit) are already resolved transitively for
   all three targets, which is what makes adding them low-risk.
@@ -60,7 +65,7 @@ common/
   agent/api            use cases + models the app talks to (no Koog types)
   agent/impl           agent runtime, storage, Koog integration
   agent/tool-api       tool contract, Koog-free, so features can add tools
-  navigation           Screen factory collector, CommonParcelize
+  navigation           Screen factory collector + the back-stack saver
   database             DaoFactory, database builder (expect/actual)
   di  init             ComponentHolder / BaseInitializer plumbing
   ui  markdown  log  coroutines  network  serialization
@@ -161,7 +166,7 @@ order-independent, the two phases are not.
 `App.kt` names no feature. `ScreenFactoriesCollector` maps a `Screen` type to a lazy factory:
 
 ```kotlin
-ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenFactory() }
+ScreenFactoriesCollector.collect(ChatScreen.serializer()) { ChatComponentHolder.get().screenFactory() }
 ```
 
 `CollectedScreenFactories` is one dispatcher registered as *both* `Presenter.Factory` and
@@ -169,21 +174,21 @@ ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenF
 navigates to it. **Matching is by exact class** — a sealed base does not resolve, so every concrete
 screen registers itself. A miss logs `No feature registered a factory for ...` rather than crashing.
 
-`Screen`s live in `feature/*/api` and are `@CommonParcelize` — a plain marker annotation, not an
-`expect`/`actual`, because Kotlin 2.0 forbids aliasing annotations that drive a compiler plugin. It
-needs **both** the `kotlinParcelize` plugin and this compiler arg, in *every* module that declares or
-annotates a `Screen`:
+**The back stack is persisted through kotlinx-serialization, on every target.** `Screen`s live in
+`feature/*/api`, are `@Serializable`, and may carry value classes — `ChatScreen.chatId` is a `ChatId`.
+The one `collect` call registers both the factory and the serializer: the serializer goes into a
+polymorphic `SerializersModule` over `CircuitSaveable`, and `CollectedScreenFactories.circuitSaver()`
+wraps it in a `SerializableCircuitSaver` that `App.kt` sets on the `Circuit`. Deriving the screen type
+from the serializer is what makes it impossible to register a screen that can be opened but not saved
+— since Circuit 0.38 an unregistered screen **fails the save** rather than being dropped, which would
+be a crash on the first configuration change.
 
-```kotlin
-freeCompilerArgs.addAll(
-    "-P",
-    "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-)
-```
+This is the hand-rolled counterpart of Slack's `@CircuitSerializable` + `@CircuitInject` codegen into
+a DI multibinding; the collector *is* the multibinding. The reflective saver was not an option: it is
+JVM-only, and iOS needs the same registration.
 
-Without it the marker is inert and the failure is a lost back stack at runtime, not a compile error.
-`@Parcelize` cannot carry value classes, which is why `ChatScreen.chatId` is a `String` and not a
-`ChatId`.
+A module that declares a `Screen` applies `kotlinSerialization`. A saved record that no longer
+restores (a renamed screen) is dropped by Circuit and logged as `Dropped a saved screen`.
 
 ### Extension points
 
@@ -202,16 +207,19 @@ looks like the model forgetting its abilities mid-session, not like a DI bug.
 ### Adding a feature
 
 1. `include(":feature:foo:api")` and `":feature:foo:impl"` in `settings.gradle.kts`.
-2. `api` module: the `Screen`(s), `@CommonParcelize`, primitives only in the constructor. Plugins:
-   `kotlinMultiplatform`, `androidMultiplatformLibrary`, `androidLint`, `kotlinParcelize` — plus the
-   parcelize compiler arg. No Compose plugins in an `api` module.
+2. `api` module: the `Screen`(s), `@Serializable`, with `@Serializable` value-class ids from
+   `common:agent:api` where the screen carries one. Plugins: `kotlinMultiplatform`,
+   `androidMultiplatformLibrary`, `androidLint`, `kotlinSerialization`. No Compose plugins in an
+   `api` module. `api(libs.circuit.runtime)`, `api(project(":common:navigation"))`, and
+   `api(project(":common:agent:api"))` if an id appears in the constructor.
 3. `impl` module: the six DI files, a `Presenter.Factory` and a `Ui.Factory` (both returning `null`
    for screens they do not own — that is the contract, not a fallback), and the UI.
 4. In `impl`'s `build.gradle.kts`: `api(project(":common:navigation"))` and
    `api(project(":feature:foo:api"))` — `api` because `ScreenFactory` and the screen type appear in
    the component's signature — then `implementation` for `:common:di`, `:common:init` and any other
    feature's **`api`** module. Never depend on another feature's `impl`.
-5. Add `FooInitializer()` to `FeatureRegistry`.
+5. In the initializer: `ScreenFactoriesCollector.collect(FooScreen.serializer()) { … }` for every
+   concrete screen, then add `FooInitializer()` to `FeatureRegistry`.
 
 `feature:agent-tools` is the exception to the api/impl split: it contributes tools rather than a
 screen, so it is one module and registers into `AgentToolsCollector`.
@@ -326,6 +334,7 @@ What exists to test each layer, and what does not:
 | HTTP tools | Ktor `MockEngine` (`ktor-client-mock` is a test dep of `agent-tools`) | `WebSearchToolTest` |
 | File tools | okio `FakeFileSystem` | `OkioChatFileStoreTest` |
 | Pure logic (codecs, projector, snippets, highlighting) | plain `kotlin.test` | throughout |
+| Presenters | held-state transitions in plain `kotlin.test`; wiring via `circuit-test` (`presenter.test {}` + `FakeNavigator`) | `AgentConfigEditorStateHolderTest`, `AgentConfigEditorPresenterTest` |
 | **Room SQL** | **nothing** — no test instantiates `ThoonDatabase` | verify by hand on the emulator |
 | **Compose UI behaviour** (scroll, highlight, follow-the-bottom) | **nothing** | verify by hand |
 
@@ -352,7 +361,9 @@ private helper gets nothing; a query whose `WHERE` clause carries correctness ge
 - Test fakes live in `commonTest/.../fake/`; `TestAgentModule` wires an in-memory graph.
 - Presenters are Circuit `Presenter<UiState>`; state is a sealed `Loading | Error | Data`; events are
   a sealed `UiEvent.Ui`. Presenters hold only presentational state — drafts, expansion — and read
-  everything else from storage.
+  everything else from storage. **The full shape, rules and checklist are in
+  [`docs/circuit/PRESENTER.md`](docs/circuit/PRESENTER.md)** — read it before writing or reviewing a
+  presenter; it is the reference the code is held to.
 - UI comes from `com.composables.ui` (a third-party design system) plus `common:ui`. Message bodies
   render as markdown via `ThoonMarkdown`. **Feature-specific UI does not go in `common:ui`.**
 
@@ -393,8 +404,16 @@ Decisions the owner has stated explicitly; do not relitigate them, and do not qu
   a plan that hides a lossy shortcut will be found out.
 - **Measure rather than estimate** when the answer is in the data — the search design was settled
   by pulling the real database and counting, not by reasoning about it.
-- The four verification tasks under *Build and test* are the definition of done. Report test
-  counts and failures as they are.
+- **The feature pattern is fixed: direction in `api`, screen factory in `impl`, registered
+  through a collector from the initializer — lazily, keyed by screen.** The naming is chosen
+  (`ScreenFactory`, `factory()`, `obtain()`). Match it; do not propose a routing table or a base
+  class in its place — both were considered and turned down.
+- **Factories and components are built lazily**, on first navigation, never at startup. "A lot of
+  factories just to open a screen" is the thing this exists to prevent.
+- **The four verification tasks under *Build and test* are the definition of done — iOS compile
+  included, every time.** The owner develops on the Android emulator; iOS is still a shipping
+  target, and the iOS compile is the only thing that catches JVM-only Koog APIs. Report test counts
+  and failures as they are.
 
 ## Where to look next
 

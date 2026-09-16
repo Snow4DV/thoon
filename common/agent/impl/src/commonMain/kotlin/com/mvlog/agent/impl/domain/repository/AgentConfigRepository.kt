@@ -18,8 +18,6 @@ internal interface AgentConfigRepository {
 
     fun observeAll(): Flow<List<AgentConfig>>
 
-    fun observe(id: AgentConfigId): Flow<AgentConfig?>
-
     fun observeDefault(): Flow<AgentConfig?>
 
 

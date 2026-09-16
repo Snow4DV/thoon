@@ -52,7 +52,7 @@ class AgentConfigTest {
 
         updateConfig(id, openAi("Personal", modelId = "gpt-4o-mini")).expectSuccess()
 
-        val updated = assertIs<AgentConfig.OpenAiCompatible>(observeConfig(id).first())
+        val updated = assertIs<AgentConfig.OpenAiCompatible>(getConfig(id))
         assertEquals(id, updated.id, "editing must not mint a new configuration")
         assertEquals("Personal", updated.name)
         assertEquals("gpt-4o-mini", updated.modelId)
@@ -240,7 +240,7 @@ class AgentConfigTest {
         val deleteConfig = component.deleteAgentConfigUseCase()
         val setDefaultConfig = component.setDefaultAgentConfigUseCase()
         val observeConfigs = component.observeAgentConfigsUseCase()
-        val observeConfig = component.observeAgentConfigUseCase()
+        val getConfig = component.getAgentConfigUseCase()
         val observeDefaultConfig = component.observeDefaultAgentConfigUseCase()
     }
 

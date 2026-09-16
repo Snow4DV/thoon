@@ -39,7 +39,7 @@ internal class ChatConfigurationPresenter(
     @Composable
     override fun present(): SettingsUiState {
         val scope = rememberCoroutineScope()
-        val chatId = remember(screen.chatId) { ChatId(screen.chatId) }
+        val chatId = screen.chatId
 
         val configs by remember { observeConfigs() }.collectAsState(initial = emptyList())
         val effective by remember(chatId) { observeChatConfig(chatId) }.collectAsState(initial = null)

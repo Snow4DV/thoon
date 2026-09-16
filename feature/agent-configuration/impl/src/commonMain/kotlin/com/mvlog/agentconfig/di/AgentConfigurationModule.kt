@@ -16,7 +16,7 @@ internal interface AgentConfigurationModule {
             get() = ScreenFactory(
                 presenterFactory = AgentConfigurationPresenterFactory(
                     observeConfigs = observeAgentConfigsUseCase,
-                    observeConfig = observeAgentConfigUseCase,
+                    getConfig = getAgentConfigUseCase,
                     observeDefaultConfig = observeDefaultAgentConfigUseCase,
                     createConfig = createAgentConfigUseCase,
                     updateConfig = updateAgentConfigUseCase,
@@ -24,6 +24,7 @@ internal interface AgentConfigurationModule {
                     setDefaultConfig = setDefaultAgentConfigUseCase,
                     observeChatConfig = observeChatConfigUseCase,
                     setChatConfig = setChatConfigUseCase,
+                    localEngineProvider = localEngineProvider,
                 ),
                 uiFactory = AgentConfigurationUiFactory(),
             )

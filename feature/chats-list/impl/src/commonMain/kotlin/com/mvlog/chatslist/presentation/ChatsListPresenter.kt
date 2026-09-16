@@ -52,7 +52,7 @@ class ChatsListPresenter(
                 is ChatsListUiEvent.Ui.ChatClicked ->
                     navigator.goTo(
                         ChatScreen(
-                            chatId = event.id,
+                            chatId = ChatId(event.id),
                             highlightMessageSequence = event.messageSequence,
                         )
                     )

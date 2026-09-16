@@ -1,6 +1,5 @@
 package com.mvlog.navigation.screen
 
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.screen.Screen
@@ -8,11 +7,11 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlinx.serialization.Serializable
 
-@CommonParcelize
+@Serializable
 private data object OwnedScreen : Screen
 
-@CommonParcelize
 private data object OrphanScreen : Screen
 
 /**
@@ -57,7 +56,7 @@ class CollectedScreenFactoriesTest {
     }
 
     private fun registerOwnedScreen() {
-        ScreenFactoriesCollector.collect<OwnedScreen> {
+        ScreenFactoriesCollector.collect(OwnedScreen.serializer()) {
             ScreenFactory(
                 presenterFactory = { screen, _, _ -> presenterAskedFor = screen; null },
                 uiFactory = { screen, _ -> uiAskedFor = screen; null },

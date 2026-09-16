@@ -15,7 +15,7 @@ class ChatsListInitializer : BaseInitializer(tag = TAG) {
     override fun init() {
         ChatsListComponentHolder.set { ChatsListComponentImpl() }
 
-        ScreenFactoriesCollector.collect<ChatsListScreen> {
+        ScreenFactoriesCollector.collect(ChatsListScreen.serializer()) {
             ChatsListComponentHolder.get().screenFactory()
         }
     }

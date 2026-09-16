@@ -3,7 +3,6 @@ package com.mvlog.chatslist.presentation
 import com.mvlog.chatslist.api.ChatsListScreen
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.screen.Screen
@@ -19,7 +18,6 @@ import kotlin.test.assertNull
  */
 class ChatsListFactoriesTest {
 
-    @CommonParcelize
     private data object OtherScreen : Screen
 
     @Test

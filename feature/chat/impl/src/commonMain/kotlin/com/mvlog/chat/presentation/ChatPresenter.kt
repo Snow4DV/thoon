@@ -60,7 +60,7 @@ class ChatPresenter(
          */
         var createdChatId by rememberRetained { mutableStateOf<ChatId?>(null) }
 
-        val chatId = screen.chatId?.let(::ChatId) ?: createdChatId
+        val chatId = screen.chatId ?: createdChatId
 
         LaunchedEffect(screen.chatId) {
             if (screen.chatId == null && createdChatId == null) {
@@ -114,7 +114,7 @@ class ChatPresenter(
                     isChatOptionsMenuVisible = false
                     // Only a saved chat has configuration to change; a new one has no id until its
                     // first prompt creates it.
-                    chatId?.let { navigator.goTo(ChatConfigurationScreen(it.value)) }
+                    chatId?.let { navigator.goTo(ChatConfigurationScreen(it)) }
                 }
 
                 ChatUiEvent.Ui.ReloadClicked -> {
@@ -126,7 +126,7 @@ class ChatPresenter(
                 }
 
                 ChatUiEvent.Ui.OpenSettingsClicked ->
-                    chatId?.let { navigator.goTo(ChatConfigurationScreen(it.value)) }
+                    chatId?.let { navigator.goTo(ChatConfigurationScreen(it)) }
 
                 ChatUiEvent.Ui.GoBackClicked -> navigator.pop()
             }

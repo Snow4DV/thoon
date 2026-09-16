@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.androidLint)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinParcelize)
 }
 
 kotlin {
@@ -26,17 +25,6 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
-        // kotlinx.parcelize.Parcelize can't be imported in commonMain (it's Android/JVM-only), and
-        // aliasing annotations that trigger compiler plugins isn't supported since Kotlin 2.0.
-        // commonMain code uses the plain com.mvlog.navigation.CommonParcelize marker instead,
-        // registered here so the Parcelize plugin treats it as @Parcelize on Android.
-        // https://developer.android.com/kotlin/parcelize#multiplatform
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-P",
-                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-            )
-        }
     }
 
     // For iOS targets, this is also where you should

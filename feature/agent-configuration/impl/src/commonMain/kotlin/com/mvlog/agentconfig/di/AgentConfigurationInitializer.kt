@@ -21,10 +21,10 @@ class AgentConfigurationInitializer : BaseInitializer(tag = TAG) {
 
         val provider = { AgentConfigurationComponentHolder.get().screenFactory() }
 
-        ScreenFactoriesCollector.collect<AgentConfigurationScreen>(provider)
-        ScreenFactoriesCollector.collect<AgentConfigListScreen>(provider)
-        ScreenFactoriesCollector.collect<AgentConfigEditorScreen>(provider)
-        ScreenFactoriesCollector.collect<ChatConfigurationScreen>(provider)
+        ScreenFactoriesCollector.collect(AgentConfigurationScreen.serializer(), provider)
+        ScreenFactoriesCollector.collect(AgentConfigListScreen.serializer(), provider)
+        ScreenFactoriesCollector.collect(AgentConfigEditorScreen.serializer(), provider)
+        ScreenFactoriesCollector.collect(ChatConfigurationScreen.serializer(), provider)
     }
 
     private companion object {

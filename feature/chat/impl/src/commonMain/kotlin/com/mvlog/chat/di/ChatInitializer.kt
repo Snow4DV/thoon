@@ -16,7 +16,9 @@ class ChatInitializer : BaseInitializer(tag = TAG) {
     override fun init() {
         ChatComponentHolder.set { ChatComponentImpl() }
 
-        ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenFactory() }
+        ScreenFactoriesCollector.collect(ChatScreen.serializer()) {
+            ChatComponentHolder.get().screenFactory()
+        }
     }
 
     private companion object {

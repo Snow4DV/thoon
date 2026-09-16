@@ -22,9 +22,6 @@ internal class RoomAgentConfigRepository(
     override fun observeAll(): Flow<List<AgentConfig>> =
         dao.observeAll().map { configs -> configs.map(mapper::toDomain) }
 
-    override fun observe(id: AgentConfigId): Flow<AgentConfig?> =
-        dao.observeById(id.value).map { it?.let(mapper::toDomain) }
-
     override fun observeDefault(): Flow<AgentConfig?> =
         combine(dao.observeSettings(), dao.observeAll()) { settings, configs ->
             val defaultId = settings?.defaultConfigId ?: return@combine null

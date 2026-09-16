@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -60,6 +61,8 @@ kotlin {
                 // `api` because ThoonAgentComponentHolder exposes ComponentHolder.get() to consumers
                 api(project(":common:di"))
                 api(libs.kotlinx.coroutines.core)
+                // Ids travel inside Screens, which are persisted through kotlinx-serialization.
+                api(libs.kotlinx.serialization.core)
             }
         }
 

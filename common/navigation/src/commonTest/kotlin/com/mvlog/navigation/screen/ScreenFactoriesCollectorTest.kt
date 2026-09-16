@@ -1,6 +1,5 @@
 package com.mvlog.navigation.screen
 
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.CircuitContext
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
@@ -12,11 +11,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlinx.serialization.Serializable
 
-@CommonParcelize
+@Serializable
 private data object RegisteredScreen : Screen
 
-@CommonParcelize
 private data object UnregisteredScreen : Screen
 
 class ScreenFactoriesCollectorTest {
@@ -30,7 +29,7 @@ class ScreenFactoriesCollectorTest {
         // construct every feature's component during startup, and the regression would be
         // invisible — nothing breaks, launch is just slower.
         var built = 0
-        ScreenFactoriesCollector.collect<RegisteredScreen> {
+        ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) {
             built++
             screenFactory()
         }
@@ -43,7 +42,7 @@ class ScreenFactoriesCollectorTest {
 
     @Test
     fun anUnclaimedScreenResolvesToNull() {
-        ScreenFactoriesCollector.collect<RegisteredScreen> { screenFactory() }
+        ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) { screenFactory() }
 
         assertNotNull(ScreenFactoriesCollector.obtain(RegisteredScreen::class))
         assertNull(
@@ -56,7 +55,7 @@ class ScreenFactoriesCollectorTest {
     fun readingDoesNotConsume() {
         // The opposite of AppOnCreateActionsCollector, which drains because its actions run once.
         // Draining here would route the first navigation and lose every one after it.
-        ScreenFactoriesCollector.collect<RegisteredScreen> { screenFactory() }
+        ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) { screenFactory() }
 
         assertNotNull(ScreenFactoriesCollector.obtain(RegisteredScreen::class))
         assertNotNull(ScreenFactoriesCollector.obtain(RegisteredScreen::class))
@@ -65,7 +64,7 @@ class ScreenFactoriesCollectorTest {
     @Test
     fun aScreenResolvesToTheFactoryItsFeatureRegistered() {
         val expected = screenFactory()
-        ScreenFactoriesCollector.collect<RegisteredScreen> { expected }
+        ScreenFactoriesCollector.collect(RegisteredScreen.serializer()) { expected }
 
         assertSame(expected, ScreenFactoriesCollector.obtain(RegisteredScreen::class))
     }

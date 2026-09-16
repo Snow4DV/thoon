@@ -6,7 +6,7 @@ import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
-import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
@@ -39,7 +39,7 @@ import com.mvlog.agent.impl.domain.usecase.CreateChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.RetryChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteAgentConfigUseCaseImpl
-import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.GetAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatUseCaseImpl
@@ -100,7 +100,7 @@ internal interface ThoonAgentModule {
     val setChatConfigUseCase: SetChatConfigUseCase
 
     val observeAgentConfigsUseCase: ObserveAgentConfigsUseCase
-    val observeAgentConfigUseCase: ObserveAgentConfigUseCase
+    val getAgentConfigUseCase: GetAgentConfigUseCase
     val observeDefaultAgentConfigUseCase: ObserveDefaultAgentConfigUseCase
     val createAgentConfigUseCase: CreateAgentConfigUseCase
     val updateAgentConfigUseCase: UpdateAgentConfigUseCase
@@ -277,8 +277,8 @@ internal interface ThoonAgentModule {
         override val observeAgentConfigsUseCase: ObserveAgentConfigsUseCase
             get() = ObserveAgentConfigsUseCaseImpl(agentConfigRepository)
 
-        override val observeAgentConfigUseCase: ObserveAgentConfigUseCase
-            get() = ObserveAgentConfigUseCaseImpl(agentConfigRepository)
+        override val getAgentConfigUseCase: GetAgentConfigUseCase
+            get() = GetAgentConfigUseCaseImpl(agentConfigRepository)
 
         override val observeDefaultAgentConfigUseCase: ObserveDefaultAgentConfigUseCase
             get() = ObserveDefaultAgentConfigUseCaseImpl(agentConfigRepository)

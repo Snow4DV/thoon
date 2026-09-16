@@ -8,7 +8,7 @@ import com.mvlog.agent.api.model.AgentConfigResult
 import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
-import com.mvlog.agent.api.usecase.ObserveAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
@@ -35,11 +35,11 @@ internal class ObserveAgentConfigsUseCaseImpl(
     override fun invoke(): Flow<List<AgentConfig>> = repository.observeAll()
 }
 
-internal class ObserveAgentConfigUseCaseImpl(
+internal class GetAgentConfigUseCaseImpl(
     private val repository: AgentConfigRepository,
-) : ObserveAgentConfigUseCase {
+) : GetAgentConfigUseCase {
 
-    override fun invoke(id: AgentConfigId): Flow<AgentConfig?> = repository.observe(id)
+    override suspend fun invoke(id: AgentConfigId): AgentConfig? = repository.get(id)
 }
 
 internal class ObserveDefaultAgentConfigUseCaseImpl(

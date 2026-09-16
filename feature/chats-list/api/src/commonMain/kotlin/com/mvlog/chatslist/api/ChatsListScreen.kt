@@ -1,7 +1,7 @@
 package com.mvlog.chatslist.api
 
-import com.mvlog.navigation.CommonParcelize
 import com.slack.circuit.runtime.screen.Screen
+import kotlinx.serialization.Serializable
 
 /**
  * Every conversation, as a list.
@@ -12,5 +12,5 @@ import com.slack.circuit.runtime.screen.Screen
  * Takes no arguments, so it is a `data object` — unlike [com.mvlog.chat.api.ChatScreen], which
  * carries the chat it opens.
  */
-@CommonParcelize
+@Serializable
 data object ChatsListScreen : Screen

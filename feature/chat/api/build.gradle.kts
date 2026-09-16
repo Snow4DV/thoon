@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
-    alias(libs.plugins.kotlinParcelize)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -26,16 +26,6 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
-        // Required for @CommonParcelize to mean anything: a Screen is Parcelable on Android, and
-        // the back stack saves screens. Without this the marker is inert and the failure is a lost
-        // back stack at runtime, not a compile error.
-        // https://developer.android.com/kotlin/parcelize#multiplatform
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-P",
-                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-            )
-        }
     }
 
     // For iOS targets, this is also where you should
@@ -69,10 +59,12 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.stdlib)
 
-                // The whole module: a navigation key. `api` on both because ChatScreen *is* a
-                // Screen and *is* annotated with the marker, so a consumer needs both to use it.
+                // The whole module: a navigation key. `api` because ChatScreen *is* a Screen and a
+                // consumer needs the type to navigate to it.
                 api(libs.circuit.runtime)
                 api(project(":common:navigation"))
+                // `ChatId` appears in a Screen constructor.
+                api(project(":common:agent:api"))
             }
         }
 

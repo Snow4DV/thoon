@@ -1,7 +1,10 @@
 package com.mvlog.navigation.screen
 
+import androidx.savedstate.serialization.SavedStateConfiguration
 import com.mvlog.log.TLogger
 import com.slack.circuit.runtime.CircuitContext
+import com.slack.circuit.runtime.screen.CircuitSaver
+import com.slack.circuit.serialization.SerializableCircuitSaver
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import com.slack.circuit.runtime.screen.Screen
@@ -27,6 +30,21 @@ class CollectedScreenFactories : Presenter.Factory, Ui.Factory {
 
     override fun create(screen: Screen, context: CircuitContext): Ui<*>? =
         screen.factoryOrNull()?.uiFactory?.create(screen, context)
+
+    /**
+     * How the back stack is persisted: kotlinx-serialization over the screens the collector knows.
+     *
+     * Built from the same registrations that route screens, so a screen cannot be routable without
+     * being saveable. A record that fails to restore — a screen renamed since the state was saved —
+     * is dropped by Circuit rather than crashing; it is logged here so a stack that comes back one
+     * screen short has an explanation.
+     */
+    fun circuitSaver(): CircuitSaver = SerializableCircuitSaver(
+        configuration = SavedStateConfiguration {
+            serializersModule = ScreenFactoriesCollector.serializersModule()
+        },
+        onRestoreError = { error -> TLogger.e(TAG, "Dropped a saved screen: ${error.message}") },
+    )
 
     /**
      * Logged rather than silent: a feature that forgets to register renders Circuit's

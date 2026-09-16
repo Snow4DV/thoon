@@ -16,9 +16,6 @@ interface AgentConfigDao : ThoonDao {
     fun observeAll(): Flow<List<AgentConfigEntity>>
 
     @Query("SELECT * FROM agent_config WHERE id = :configId")
-    fun observeById(configId: String): Flow<AgentConfigEntity?>
-
-    @Query("SELECT * FROM agent_config WHERE id = :configId")
     suspend fun get(configId: String): AgentConfigEntity?
 
     @Query("SELECT COUNT(*) FROM agent_config")

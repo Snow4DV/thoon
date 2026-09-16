@@ -13,9 +13,15 @@ fun interface ObserveAgentConfigsUseCase {
     operator fun invoke(): Flow<List<AgentConfig>>
 }
 
-/** A single configuration, for an edit form. Emits null once it is deleted. */
-fun interface ObserveAgentConfigUseCase {
-    operator fun invoke(id: AgentConfigId): Flow<AgentConfig?>
+/**
+ * A single configuration as it is right now, for seeding an edit form. Null when it does not exist.
+ *
+ * One-shot rather than a flow on purpose: a form takes over from storage the moment it is loaded,
+ * and offering a flow here would invite a screen to keep collecting and overwrite what the user is
+ * typing. A screen that needs to follow changes lists them with [ObserveAgentConfigsUseCase].
+ */
+fun interface GetAgentConfigUseCase {
+    suspend operator fun invoke(id: AgentConfigId): AgentConfig?
 }
 
 /** The configuration chats fall back to when they have no override of their own. */

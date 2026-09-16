@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.androidLint)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinParcelize)
 }
 
 kotlin {
@@ -23,15 +22,6 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
-        // See feature/chat: `@Parcelize` cannot be imported in commonMain, so screens are marked
-        // with com.mvlog.navigation.CommonParcelize and the plugin is told to treat it as such.
-        // The marker is inert without this.
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-P",
-                "plugin:org.jetbrains.kotlin.parcelize:additionalAnnotation=com.mvlog.navigation.CommonParcelize",
-            )
-        }
     }
 
     val xcfName = "feature:chats-list:implKit"

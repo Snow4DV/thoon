@@ -381,13 +381,21 @@ than rewritten.
 
 ## 7. Feature api/impl and the screen collector — done
 
-Each feature publishes a **direction** from a bare `api` module — one file, depending only on
-`circuit-runtime` and `:common:navigation`. Its `impl` registers a `ScreenFactory` with
-`ScreenFactoriesCollector` from its base initializer, keyed by screen type:
+Each feature publishes a **direction** from a bare `api` module — one file, depending on
+`circuit-runtime`, `:common:navigation`, and `:common:agent:api` when the screen carries a typed id.
+Its `impl` registers a `ScreenFactory` *and the screen's serializer* with `ScreenFactoriesCollector`
+from its base initializer, keyed by screen type:
 
 ```kotlin
-ScreenFactoriesCollector.collect<ChatScreen> { ChatComponentHolder.get().screenFactory() }
+ScreenFactoriesCollector.collect(ChatScreen.serializer()) { ChatComponentHolder.get().screenFactory() }
 ```
+
+**Screens moved from Parcelize to kotlinx-serialization with Circuit 0.39.0** (Circuit 0.38 made
+`Screen` non-Parcelable). That removed the Android-only `CommonParcelize` marker and its per-module
+compiler flag, gave iOS the same persistence path as Android, and let screens carry `ChatId` and
+`AgentConfigId` instead of strings. The serializer rides in the same `collect` call because an
+unregistered screen now fails the save instead of being dropped. The toolchain moved with it: Kotlin
+2.4.20, Compose Multiplatform 1.12.0, AGP 9.4.0 (which needs Gradle 9.6.0), KSP 2.3.12.
 
 `App.kt` names no feature at all: one `CollectedScreenFactories` is registered with Circuit and
 resolves by looking the screen up, so a feature's component — and through it the agent subsystem —
@@ -427,6 +435,13 @@ model.
 
 **Per-chat configuration reuses the renderer** — a single-select list plus a "Manage models…" link,
 reached from the chat's three-dots menu, which until now toggled a boolean nothing rendered.
+
+**The editor is the reference presenter** for `docs/circuit/PRESENTER.md`: one retained
+`AgentConfigEditorStateHolder` owning a plain-data `AgentConfigEditorState`
+(`Loading | Missing | Editing`) and every transition to it, mapped to a sealed
+`Loading | Error | Data` UI state; per-intent events, an in-flight
+guard on every write, `isDefault` derived from the observed default rather than held, engines injected
+through the factory, and a `presenter.test {}` suite over fakes. `circuit-test` was added for it.
 
 - [ ] **Agent, Tools and Advanced are empty**, and say why. `agent_settings` holds only
       `defaultConfigId`, so an edited system prompt or a switched-off tool has nowhere to live.
