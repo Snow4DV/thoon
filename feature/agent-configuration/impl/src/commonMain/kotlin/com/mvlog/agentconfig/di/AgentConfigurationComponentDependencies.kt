@@ -7,7 +7,7 @@ import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
-import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
@@ -22,7 +22,7 @@ internal interface AgentConfigurationComponentDependencies {
     val updateAgentConfigUseCase: UpdateAgentConfigUseCase
     val deleteAgentConfigUseCase: DeleteAgentConfigUseCase
     val setDefaultAgentConfigUseCase: SetDefaultAgentConfigUseCase
-    val observeChatConfigUseCase: ObserveChatConfigUseCase
+    val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
     val setChatConfigUseCase: SetChatConfigUseCase
 
     val localEngineProvider: LocalEngineProvider
@@ -49,8 +49,8 @@ internal interface AgentConfigurationComponentDependencies {
         override val setDefaultAgentConfigUseCase: SetDefaultAgentConfigUseCase
             get() = ThoonAgentComponentHolder.get().setDefaultAgentConfigUseCase()
 
-        override val observeChatConfigUseCase: ObserveChatConfigUseCase
-            get() = ThoonAgentComponentHolder.get().observeChatConfigUseCase()
+        override val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
+            get() = ThoonAgentComponentHolder.get().observeChatConfigOverrideUseCase()
 
         override val setChatConfigUseCase: SetChatConfigUseCase
             get() = ThoonAgentComponentHolder.get().setChatConfigUseCase()

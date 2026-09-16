@@ -7,7 +7,7 @@ import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
-import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.ObserveChatsUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
@@ -39,7 +39,7 @@ interface ThoonAgentComponent {
 
     fun cancelAgentRunUseCase(): CancelAgentRunUseCase
 
-    fun observeChatConfigUseCase(): ObserveChatConfigUseCase
+    fun observeChatConfigOverrideUseCase(): ObserveChatConfigOverrideUseCase
 
     fun setChatConfigUseCase(): SetChatConfigUseCase
 

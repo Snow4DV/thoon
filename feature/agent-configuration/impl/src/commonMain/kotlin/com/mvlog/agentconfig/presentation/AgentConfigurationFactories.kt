@@ -5,7 +5,7 @@ import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
-import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
@@ -37,7 +37,7 @@ internal class AgentConfigurationPresenterFactory(
     private val updateConfig: UpdateAgentConfigUseCase,
     private val deleteConfig: DeleteAgentConfigUseCase,
     private val setDefaultConfig: SetDefaultAgentConfigUseCase,
-    private val observeChatConfig: ObserveChatConfigUseCase,
+    private val observeChatConfigOverride: ObserveChatConfigOverrideUseCase,
     private val setChatConfig: SetChatConfigUseCase,
     /** Read per editor, not per factory, so a late-registered engine shows on the next open. */
     private val localEngineProvider: LocalEngineProvider,
@@ -72,7 +72,7 @@ internal class AgentConfigurationPresenterFactory(
             screen = screen,
             navigator = navigator,
             observeConfigs = observeConfigs,
-            observeChatConfig = observeChatConfig,
+            observeChatConfigOverride = observeChatConfigOverride,
             observeDefaultConfig = observeDefaultConfig,
             setChatConfig = setChatConfig,
         )

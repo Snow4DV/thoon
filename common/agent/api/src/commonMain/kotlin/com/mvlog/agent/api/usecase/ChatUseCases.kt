@@ -1,6 +1,5 @@
 package com.mvlog.agent.api.usecase
 
-import com.mvlog.agent.api.model.AgentConfig
 import com.mvlog.agent.api.model.AgentConfigId
 import com.mvlog.agent.api.model.AgentConfigResult
 import com.mvlog.agent.api.model.AgentRunId
@@ -59,9 +58,9 @@ fun interface CancelAgentRunUseCase {
     suspend operator fun invoke(runId: AgentRunId)
 }
 
-/** The configuration a chat will run on: its override, or the default. */
-fun interface ObserveChatConfigUseCase {
-    operator fun invoke(chatId: ChatId): Flow<AgentConfig?>
+/** The chat's explicit override. Null means it follows the default. */
+fun interface ObserveChatConfigOverrideUseCase {
+    operator fun invoke(chatId: ChatId): Flow<AgentConfigId?>
 }
 
 /** Sets the override; null clears it so the chat follows the default. */

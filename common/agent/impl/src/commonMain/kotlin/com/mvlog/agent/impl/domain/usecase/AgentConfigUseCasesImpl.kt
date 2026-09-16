@@ -10,7 +10,7 @@ import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
-import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
@@ -19,9 +19,9 @@ import com.mvlog.agent.impl.domain.repository.AgentConfigRepository
 import com.mvlog.agent.impl.domain.repository.ChatMetadataRepository
 import com.mvlog.agent.impl.util.IdGenerator
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 internal class ObserveAgentConfigsUseCaseImpl(
     private val repository: AgentConfigRepository,
@@ -44,20 +44,12 @@ internal class ObserveDefaultAgentConfigUseCaseImpl(
     override fun invoke(): Flow<AgentConfig?> = repository.observeDefault()
 }
 
-internal class ObserveChatConfigUseCaseImpl(
-    private val repository: AgentConfigRepository,
+internal class ObserveChatConfigOverrideUseCaseImpl(
     private val metadataRepository: ChatMetadataRepository,
-) : ObserveChatConfigUseCase {
+) : ObserveChatConfigOverrideUseCase {
 
-    override fun invoke(chatId: ChatId): Flow<AgentConfig?> =
-        combine(
-            metadataRepository.observe(chatId),
-            repository.observeAll(),
-            repository.observeDefault(),
-        ) { chat, configs, default ->
-            val override = chat?.configId ?: return@combine default
-            configs.firstOrNull { it.id == override } ?: default
-        }.distinctUntilChanged()
+    override fun invoke(chatId: ChatId): Flow<AgentConfigId?> =
+        metadataRepository.observe(chatId).map { it?.configId }.distinctUntilChanged()
 }
 
 internal class CreateAgentConfigUseCaseImpl(

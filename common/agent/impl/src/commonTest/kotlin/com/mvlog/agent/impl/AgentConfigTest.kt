@@ -78,13 +78,24 @@ class AgentConfigTest {
         setDefaultConfig(default).expectSuccess()
 
         val chatId = createChat(configId = null)
-        assertEquals(default, observeChatConfig(chatId).first()?.id)
+        assertNull(observeChatConfigOverride(chatId).first())
 
         setChatConfig(chatId, override).expectSuccess()
-        assertEquals(override, observeChatConfig(chatId).first()?.id)
+        assertEquals(override, observeChatConfigOverride(chatId).first())
 
         setChatConfig(chatId, null).expectSuccess()
-        assertEquals(default, observeChatConfig(chatId).first()?.id)
+        assertNull(observeChatConfigOverride(chatId).first())
+    }
+
+    @Test
+    fun overridingWithTheDefaultIsStillAnOverride() = configTest {
+        val default = createConfig(openAi("Default")).expectSuccess()
+        setDefaultConfig(default).expectSuccess()
+        val chatId = createChat(configId = null)
+
+        setChatConfig(chatId, default).expectSuccess()
+
+        assertEquals(default, observeChatConfigOverride(chatId).first())
     }
 
     @Test
@@ -94,14 +105,13 @@ class AgentConfigTest {
         setDefaultConfig(default).expectSuccess()
 
         val chatId = createChat(configId = override)
-        assertEquals(override, observeChatConfig(chatId).first()?.id)
+        assertEquals(override, observeChatConfigOverride(chatId).first())
 
         deleteConfig(override)
 
-        assertEquals(
-            default,
-            observeChatConfig(chatId).first()?.id,
-            "a chat pinned to a deleted configuration should fall back, not break",
+        assertNull(
+            observeChatConfigOverride(chatId).first(),
+            "a chat pinned to a deleted configuration should be detached, not left dangling",
         )
     }
 
@@ -110,7 +120,7 @@ class AgentConfigTest {
         val pinned = createConfig(openAi("Pinned")).expectSuccess()
         val chatId = createChat(configId = pinned)
 
-        assertEquals(pinned, observeChatConfig(chatId).first()?.id)
+        assertEquals(pinned, observeChatConfigOverride(chatId).first())
     }
 
     @Test
@@ -227,7 +237,7 @@ class AgentConfigTest {
 
     private class Fixture(component: ThoonAgentComponentImpl) {
         val createChat = component.createChatUseCase()
-        val observeChatConfig = component.observeChatConfigUseCase()
+        val observeChatConfigOverride = component.observeChatConfigOverrideUseCase()
         val setChatConfig = component.setChatConfigUseCase()
         val createConfig = component.createAgentConfigUseCase()
         val updateConfig = component.updateAgentConfigUseCase()

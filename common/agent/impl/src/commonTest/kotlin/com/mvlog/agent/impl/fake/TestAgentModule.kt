@@ -8,7 +8,7 @@ import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
-import com.mvlog.agent.api.usecase.ObserveChatConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.ObserveChatsUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
@@ -42,7 +42,7 @@ import com.mvlog.agent.impl.domain.usecase.RetryChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.GetAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveAgentConfigsUseCaseImpl
-import com.mvlog.agent.impl.domain.usecase.ObserveChatConfigUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.ObserveChatConfigOverrideUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.ObserveChatsUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.SearchChatsUseCaseImpl
@@ -209,8 +209,8 @@ internal class TestAgentModule(
             canceller = runCoordinator,
         )
 
-    override val observeChatConfigUseCase: ObserveChatConfigUseCase
-        get() = ObserveChatConfigUseCaseImpl(agentConfigRepository, chatMetadataRepository)
+    override val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
+        get() = ObserveChatConfigOverrideUseCaseImpl(chatMetadataRepository)
 
     override val setChatConfigUseCase: SetChatConfigUseCase
         get() = SetChatConfigUseCaseImpl(agentConfigRepository, chatMetadataRepository)

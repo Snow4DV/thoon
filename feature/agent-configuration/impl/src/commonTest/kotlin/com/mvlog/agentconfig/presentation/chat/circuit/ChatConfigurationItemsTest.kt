@@ -14,7 +14,7 @@ class ChatConfigurationItemsTest {
 
     @Test
     fun theDefaultRowIsSelectedWhenTheChatHasNoOverride() {
-        val items = items(effectiveId = "a", followsDefault = true)
+        val items = items(overrideId = null)
 
         assertEquals(1, items.selectedCount())
         assertEquals("Use the app default", items.selectedTitles().single())
@@ -22,29 +22,37 @@ class ChatConfigurationItemsTest {
 
     @Test
     fun theOverrideIsSelectedWhenTheChatHasOne() {
-        val items = items(effectiveId = "b", followsDefault = false)
+        val items = items(overrideId = "b")
 
         assertEquals(1, items.selectedCount())
         assertEquals("Careful", items.selectedTitles().single())
     }
 
     @Test
+    fun anOverrideThatMatchesTheDefaultStillSelectsTheConfigRow() {
+        val items = items(overrideId = "a", defaultName = "Fast")
+
+        assertEquals(1, items.selectedCount())
+        assertEquals("Fast", items.selectedTitles().single(), "pinning the default is still a pin")
+    }
+
+    @Test
     fun theDefaultRowSaysWhichConfigurationThatIs() {
-        val items = items(effectiveId = "a", followsDefault = true, defaultName = "Fast")
+        val items = items(overrideId = null, defaultName = "Fast")
 
         assertEquals("Currently Fast", items.filterIsInstance<SettingItem.Choice>().first().subtitle)
     }
 
     @Test
     fun withNoDefaultSetTheRowSaysSoRatherThanLookingEmpty() {
-        val items = items(effectiveId = null, followsDefault = true, defaultName = null)
+        val items = items(overrideId = null, defaultName = null)
 
         assertEquals("No default is set", items.filterIsInstance<SettingItem.Choice>().first().subtitle)
     }
 
     @Test
     fun manageModelsIsAlwaysLast() {
-        val last = assertIs<SettingItem.Navigation>(items(effectiveId = "a", followsDefault = true).last())
+        val last = assertIs<SettingItem.Navigation>(items(overrideId = null).last())
 
         assertEquals("Manage models…", last.title)
     }
@@ -54,9 +62,8 @@ class ChatConfigurationItemsTest {
         var selected: AgentConfigId? = AgentConfigId("b")
         val items = chatConfigurationItems(
             configs = configs,
-            effectiveId = "b",
+            overrideId = "b",
             defaultName = "Fast",
-            followsDefault = false,
             onSelect = { selected = it },
             onManageModels = {},
         )
@@ -67,14 +74,12 @@ class ChatConfigurationItemsTest {
     }
 
     private fun items(
-        effectiveId: String?,
-        followsDefault: Boolean,
+        overrideId: String?,
         defaultName: String? = "Fast",
     ) = chatConfigurationItems(
         configs = configs,
-        effectiveId = effectiveId,
+        overrideId = overrideId,
         defaultName = defaultName,
-        followsDefault = followsDefault,
         onSelect = {},
         onManageModels = {},
     )

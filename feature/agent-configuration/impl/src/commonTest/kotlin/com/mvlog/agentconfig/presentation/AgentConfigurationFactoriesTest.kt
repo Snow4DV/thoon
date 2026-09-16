@@ -64,7 +64,7 @@ class AgentConfigurationFactoriesTest {
         updateConfig = { _, _ -> AgentConfigResult.Success(Unit) },
         deleteConfig = { },
         setDefaultConfig = { AgentConfigResult.Success(Unit) },
-        observeChatConfig = { flowOf(null) },
+        observeChatConfigOverride = { flowOf(null) },
         setChatConfig = { _, _ -> AgentConfigResult.Success(Unit) },
         localEngineProvider = { emptyList() },
     )

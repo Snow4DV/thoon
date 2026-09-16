@@ -7,12 +7,11 @@ import com.mvlog.agentconfig.presentation.common.settings.ui.SettingItem
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.toPersistentList
 
-/** Exactly one row is selected: the default row when [followsDefault], else the effective one. */
+/** Exactly one row is selected: the default row when there is no override, else the overridden config. */
 internal fun chatConfigurationItems(
     configs: List<AgentConfig>,
-    effectiveId: String?,
+    overrideId: String?,
     defaultName: String?,
-    followsDefault: Boolean,
     onSelect: (AgentConfigId?) -> Unit,
     onManageModels: () -> Unit,
 ): PersistentList<SettingItem> = buildList {
@@ -20,7 +19,7 @@ internal fun chatConfigurationItems(
         SettingItem.Choice(
             title = "Use the app default",
             subtitle = defaultName?.let { "Currently $it" } ?: "No default is set",
-            isSelected = followsDefault,
+            isSelected = overrideId == null,
             onSelect = { onSelect(null) },
         ),
     )
@@ -30,7 +29,7 @@ internal fun chatConfigurationItems(
             SettingItem.Choice(
                 title = config.name,
                 subtitle = config.describe(),
-                isSelected = !followsDefault && config.id.value == effectiveId,
+                isSelected = config.id.value == overrideId,
                 onSelect = { onSelect(config.id) },
             ),
         )

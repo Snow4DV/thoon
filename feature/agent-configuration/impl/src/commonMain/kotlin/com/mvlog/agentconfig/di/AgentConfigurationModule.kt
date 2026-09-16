@@ -22,7 +22,7 @@ internal interface AgentConfigurationModule {
                     updateConfig = updateAgentConfigUseCase,
                     deleteConfig = deleteAgentConfigUseCase,
                     setDefaultConfig = setDefaultAgentConfigUseCase,
-                    observeChatConfig = observeChatConfigUseCase,
+                    observeChatConfigOverride = observeChatConfigOverrideUseCase,
                     setChatConfig = setChatConfigUseCase,
                     localEngineProvider = localEngineProvider,
                 ),
