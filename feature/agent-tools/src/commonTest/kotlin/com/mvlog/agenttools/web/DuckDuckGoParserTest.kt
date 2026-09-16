@@ -53,10 +53,24 @@ class DuckDuckGoParserTest {
 
     @Test
     fun markupThatNoLongerMatchesYieldsNothing() {
-        // The signal the tool turns into a loud failure. An empty parse is indistinguishable from
-        // "no results" here, and only one of those is the user's problem — so the tool must never
-        // report this as "nothing matched".
+        // The signal the tool turns into a loud failure — but only once the two innocent
+        // explanations below have been ruled out.
         assertTrue(DuckDuckGoParser.parse("<div>redesigned page</div>").isEmpty())
+    }
+
+    @Test
+    fun apageThatMeansItFoundNothingSaysSo() {
+        // What separates "your query matched nothing" from "this parser is broken". Without it the
+        // tool told the model its own tools had stopped working.
+        assertTrue(DuckDuckGoParser.isNoResultsPage("""<div class="no-results">No results.</div>"""))
+        assertTrue(!DuckDuckGoParser.isNoResultsPage(FIXTURE))
+    }
+
+    @Test
+    fun theAntiBotInterstitialIsRecognised() {
+        // Arrives as 202, which reads as success, so the body is the only thing that gives it away.
+        assertTrue(DuckDuckGoParser.isChallengePage("""<script src="/dist/anomaly.js"></script>"""))
+        assertTrue(!DuckDuckGoParser.isChallengePage(FIXTURE))
     }
 
     private fun was(value: String) = "was: $value"

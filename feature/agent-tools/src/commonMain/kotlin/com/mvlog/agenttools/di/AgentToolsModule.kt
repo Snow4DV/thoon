@@ -8,6 +8,7 @@ import com.mvlog.agenttools.tools.EditFileTool
 import com.mvlog.agenttools.tools.ListFilesTool
 import com.mvlog.agenttools.tools.ReadFileTool
 import com.mvlog.agenttools.tools.WriteFileTool
+import com.mvlog.agenttools.time.CurrentDateTimeTool
 import com.mvlog.agenttools.web.FetchUrlTool
 import com.mvlog.agenttools.web.WebSearchTool
 import okio.FileSystem
@@ -49,6 +50,7 @@ internal interface AgentToolsModule {
                     EditFileTool(fileStore),
                     FetchUrlTool(httpClient),
                     WebSearchTool(httpClient),
+                    CurrentDateTimeTool(),
                 )
             }
     }

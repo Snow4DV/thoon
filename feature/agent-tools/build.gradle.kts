@@ -58,6 +58,9 @@ kotlin {
                 implementation(libs.kotlin.stdlib)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+                // Local civil time. The stdlib has instants but no time zone, and "what is the
+                // date here" is a question only a zone can answer.
+                implementation(libs.kotlinx.datetime)
                 implementation(libs.okio)
                 implementation(libs.ktor.client.core)
 
@@ -75,6 +78,9 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.okio.fakefilesystem)
+                // The bug these tests exist for is in status handling, not parsing: a 202
+                // challenge page passed `isSuccess()`. That needs a real client to reproduce.
+                implementation(libs.ktor.client.mock)
             }
         }
 

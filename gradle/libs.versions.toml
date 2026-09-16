@@ -27,6 +27,7 @@ composablesUi = "0.2.0"
 composablesUnstyled = "2.7.0"
 composablesIconsLucide = "1.1.0"
 kotlinxSerialization = "1.11.0"
+kotlinxDatetime = "0.7.1"
 markdownRenderer = "0.43.0"
 composeShimmer = "1.5.0"
 koog = "1.1.1"
@@ -58,6 +59,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
 # Circuit
 circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = "circuit" }
@@ -89,6 +91,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 # Filesystem
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }

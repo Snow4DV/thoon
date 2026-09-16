@@ -99,11 +99,32 @@ internal class WebSearchTool(private val httpClient: HttpClient) : ThoonAgentToo
         }
 
         val body = response.bodyAsText()
+
+        // Checked before anything is parsed, and deliberately not gated on the status being an
+        // error: the anti-bot interstitial is served as `202 Accepted`, which `isSuccess()` waves
+        // through. Left to fall past here it parses to nothing and gets blamed on the markup.
+        if (DuckDuckGoParser.isChallengePage(body)) {
+            throw WebToolException(
+                "The search provider served an anti-bot challenge instead of results, so this " +
+                    "device is being blocked rather than the search failing. Rephrasing will not " +
+                    "help; try again later.",
+            )
+        }
+
         val results = DuckDuckGoParser.parse(body)
+
+        // An ordinary answer, not an exception. The model's next move is to rephrase, and telling
+        // it the tool is broken is what stops it: a search for `"meshersky bulvard"` matched
+        // nothing because the quotes forced an exact match on a misspelling, and reporting that as
+        // a broken tool sent the model looking for a fault that was not there.
+        if (results.isEmpty() && DuckDuckGoParser.isNoResultsPage(body)) {
+            return "No results for '$query'. Try different or less specific terms — quoting a " +
+                "phrase forces an exact match, which fails on a misspelling."
+        }
+
         if (results.isEmpty()) {
-            // Not "no results": this parses a page meant for browsers, so an empty parse is far
-            // more likely to mean the markup changed. Reporting it as "nothing found" would have
-            // the model confidently tell the user something false.
+            // Neither a challenge nor a marked empty page, so the markup this parses has moved.
+            // Reporting it as "nothing found" would have the model tell the user something false.
             throw WebToolException(
                 "Could not read any results from the search page. The provider's markup has " +
                     "probably changed, so web_search needs fixing — this is not a claim that " +
