@@ -22,6 +22,7 @@ internal fun AgentChatItem.toUi(
         createdAt = createdAt,
         origin = ChatItem.Message.Origin.AI,
         attachments = persistentListOf(),
+        isStreaming = isStreaming,
     )
 
     is AgentChatItem.Reasoning -> ChatItem.Thought(

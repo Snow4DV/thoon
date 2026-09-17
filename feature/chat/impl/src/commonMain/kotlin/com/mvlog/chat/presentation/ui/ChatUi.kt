@@ -240,6 +240,7 @@ private fun ChatUiDataContent(
                             contentMarkdown = chatItem.contentMarkdown,
                             createdAt = null,
                             attachments = chatItem.attachments.map { it.toUi() }.toPersistentList(),
+                            isStreaming = chatItem.isStreaming,
                         )
 
                         ChatItem.Message.Origin.USER -> ChatUserMessage(

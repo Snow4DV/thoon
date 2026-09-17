@@ -67,7 +67,9 @@ kotlin {
                 implementation(libs.kotlinx.collections.immutable)
                 implementation(libs.composables.ui)
                 implementation(libs.composables.icons.lucide)
-                implementation(libs.markdownRenderer)
+                implementation(libs.hrmMarkdownParser)
+                implementation(libs.hrmMarkdownRuntime)
+                implementation(libs.hrmMarkdownRenderer)
             }
         }
 

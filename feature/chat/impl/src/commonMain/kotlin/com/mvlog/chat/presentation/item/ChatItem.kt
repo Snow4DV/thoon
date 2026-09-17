@@ -14,6 +14,8 @@ sealed interface ChatItem {
         val createdAt: Instant,
         val origin: Origin,
         val attachments: PersistentList<Attachment> = persistentListOf(),
+        /** Still growing: the renderer appends instead of re-parsing. */
+        val isStreaming: Boolean = false,
     ) : ChatItem {
 
         sealed interface Attachment {

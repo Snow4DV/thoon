@@ -69,7 +69,6 @@ kotlin {
                 implementation(libs.composables.ui)
                 implementation(libs.composables.unstyled)
                 implementation(libs.composables.icons.lucide)
-                implementation(libs.markdownRenderer)
                 // `api`: ScreenFactory appears in ChatComponent's signature.
                 api(project(":common:navigation"))
                 // The direction this feature owns. Nothing else may depend on this module.

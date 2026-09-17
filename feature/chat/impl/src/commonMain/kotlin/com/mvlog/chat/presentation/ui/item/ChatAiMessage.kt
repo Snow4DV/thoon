@@ -38,6 +38,7 @@ fun ChatAiMessage(
     createdAt: String?,
     attachments: PersistentList<ChatAttachmentUi>,
     modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (attachments.isNotEmpty()) {
@@ -51,7 +52,7 @@ fun ChatAiMessage(
                 }
             }
         }
-        ThoonMarkdown(content = contentMarkdown, isOnPanel = false, modifier = Modifier)
+        ThoonMarkdown(content = contentMarkdown, isOnPanel = false, isStreaming = isStreaming)
         createdAt?.let {
             Text(
                 text = it, color = Theme[colors][mutedColor],
