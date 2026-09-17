@@ -2,6 +2,7 @@ package com.mvlog.agent.impl.di
 
 import com.mvlog.agent.api.di.ThoonAgentComponent
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -43,6 +44,8 @@ internal class ThoonAgentComponentImpl(
     override fun sendPromptUseCase(): SendPromptUseCase = module.sendPromptUseCase
 
     override fun cancelAgentRunUseCase(): CancelAgentRunUseCase = module.cancelAgentRunUseCase
+
+    override fun cancelChatRunUseCase(): CancelChatRunUseCase = module.cancelChatRunUseCase
 
     override fun observeChatConfigOverrideUseCase(): ObserveChatConfigOverrideUseCase =
         module.observeChatConfigOverrideUseCase

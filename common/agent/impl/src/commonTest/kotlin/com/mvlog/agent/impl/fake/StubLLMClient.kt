@@ -13,6 +13,7 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Clock
@@ -23,6 +24,8 @@ internal class StubLLMClient(
     /** One script per turn; the last one repeats, so a single-turn test needs no padding. */
     private vararg val scripts: List<StreamFrame>,
     private val failAfterFrames: Int? = null,
+    /** Virtual-time pause before each frame, so a test can act mid-stream. */
+    private val frameDelayMillis: Long = 0L,
 ) : LLMClient() {
 
     val prompts = mutableListOf<Prompt>()
@@ -38,6 +41,7 @@ internal class StubLLMClient(
             if (failAfterFrames != null && index >= failAfterFrames) {
                 error("stub model failed mid-stream")
             }
+            if (frameDelayMillis > 0) delay(frameDelayMillis)
             emit(frame)
         }
     }

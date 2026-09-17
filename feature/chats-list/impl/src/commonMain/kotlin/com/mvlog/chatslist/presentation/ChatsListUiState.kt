@@ -59,6 +59,8 @@ sealed interface ChatsListUiEvent : CircuitUiEvent {
 
         data class DeleteClicked(val id: String) : Ui
 
+        data class StopClicked(val id: String) : Ui
+
         data object NewChatClicked : Ui
 
         data object SettingsClicked : Ui

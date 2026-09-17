@@ -100,6 +100,7 @@ fun ChatUi(
                 onPromptChanged = { state.eventSink(ChatUiEvent.Ui.PromptChanged(it)) },
                 onSubmit = { state.eventSink(ChatUiEvent.Ui.PromptSubmitted(it)) },
                 isWorking = state.isThinking,
+                onStop = { state.eventSink(ChatUiEvent.Ui.CancelGenerationClicked) },
                 modifier = promptFieldModifier,
             )
 

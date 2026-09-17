@@ -24,6 +24,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -271,12 +276,90 @@ class AgentPersistenceTest {
         )
     }
 
+    @Test
+    fun anEarlierUnansweredPromptIsNotLostByTheNextRun() = persistenceTest { f ->
+        // Two accepted prompts, neither answered: what a cancelled or failed first run leaves.
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "first question")
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "second question")
+
+        val client = StubLLMClient(StubLLMClient.textReply("second answer"))
+        f.run(client, prompt = "second question")
+
+        val sent = client.prompts.single().messages
+            .filterIsInstance<Message.User>()
+            .map { it.textContent() }
+        assertEquals(
+            listOf("first question", "second question"),
+            sent,
+            "an earlier unanswered prompt is history the model must still see",
+        )
+        assertEquals(
+            listOf("first question", "second question", "second answer"),
+            f.spokenHistory(),
+            "the earlier prompt must survive the run's commit",
+        )
+    }
+
+    @Test
+    fun aPromptSentWhileARunStreamsSurvivesBothRuns() = persistenceTest { f ->
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "first question")
+        val slow = StubLLMClient(StubLLMClient.textReply("first", " answer"), frameDelayMillis = 100)
+        val first = f.launchRun(slow, prompt = "first question")
+        f.advanceTimeBy(150) // one frame in, the reply is still streaming
+
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "second question")
+        f.advanceUntilIdle()
+        first.join()
+
+        f.run(StubLLMClient(StubLLMClient.textReply("second answer")), prompt = "second question")
+
+        assertEquals(
+            listOf("first question", "first answer", "second question", "second answer"),
+            f.spokenHistory(),
+            "a prompt accepted mid-run must end up after the running turn, not lost",
+        )
+    }
+
+    @Test
+    fun aCancelledRunsPromptIsStillSentWithTheNextOne() = persistenceTest { f ->
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "first question")
+        val slow = StubLLMClient(StubLLMClient.textReply("first", " answer"), frameDelayMillis = 100)
+        val first = f.launchRun(slow, prompt = "first question")
+        f.advanceTimeBy(150)
+        first.cancelAndJoin()
+
+        f.module.conversationRepository.appendUserPrompt(f.chatId, "second question")
+        val second = StubLLMClient(StubLLMClient.textReply("second answer"))
+        f.run(second, prompt = "second question")
+
+        val sent = second.prompts.single().messages
+            .filterIsInstance<Message.User>()
+            .map { it.textContent() }
+        assertEquals(
+            listOf("first question", "second question"),
+            sent,
+            "stopping the agent must not erase what the user asked",
+        )
+    }
+
     private class Fixture(
         val module: TestAgentModule,
         val chatId: ChatId,
         private val scope: CoroutineScope,
+        private val testScope: TestScope,
     ) {
         private val historyCodec = KoogMessageRowCodec(TestJson, IdGenerator.Random)
+
+        /** Runs in the background so the test can act while the reply streams. */
+        fun launchRun(client: StubLLMClient, prompt: String): Job =
+            scope.launch { run(client, prompt) }
+
+        fun advanceTimeBy(milliseconds: Long) = testScope.advanceTimeBy(milliseconds)
+
+        fun advanceUntilIdle() = testScope.advanceUntilIdle()
+
+        suspend fun spokenHistory(): List<String> =
+            committedMessages().filter { it !is Message.System }.map { it.textContent() }
 
         suspend fun run(client: StubLLMClient, prompt: String = "first question") {
             KoogAgentRunner(
@@ -320,7 +403,7 @@ class AgentPersistenceTest {
         try {
             val module = TestAgentModule(agentScope = scope)
             val chatId = module.createChatUseCase(null)
-            body(Fixture(module = module, chatId = chatId, scope = scope))
+            body(Fixture(module = module, chatId = chatId, scope = scope, testScope = this))
         } finally {
             scope.cancel()
         }

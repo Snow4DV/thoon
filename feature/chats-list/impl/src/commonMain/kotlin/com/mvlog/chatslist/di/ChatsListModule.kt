@@ -17,6 +17,7 @@ internal interface ChatsListModule {
                 presenterFactory = ChatsListPresenterFactory(
                     searchChats = searchChatsUseCase,
                     deleteChat = deleteChatUseCase,
+                    cancelChatRun = cancelChatRunUseCase,
                 ),
                 uiFactory = ChatsListUiFactory(),
             )

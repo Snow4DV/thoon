@@ -1,6 +1,7 @@
 package com.mvlog.agent.impl.di
 
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -34,6 +35,7 @@ import com.mvlog.agent.impl.domain.repository.ChatRepository
 import com.mvlog.agent.impl.domain.repository.CheckpointRepository
 import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.agent.impl.domain.usecase.CancelAgentRunUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.CancelChatRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteChatUseCaseImpl
@@ -96,6 +98,7 @@ internal interface ThoonAgentModule {
     val deleteChatUseCase: DeleteChatUseCase
     val sendPromptUseCase: SendPromptUseCase
     val cancelAgentRunUseCase: CancelAgentRunUseCase
+    val cancelChatRunUseCase: CancelChatRunUseCase
     val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
     val setChatConfigUseCase: SetChatConfigUseCase
 
@@ -256,6 +259,12 @@ internal interface ThoonAgentModule {
             get() = CancelAgentRunUseCaseImpl(
                 runRepository = agentRunRepository,
                 canceller = runCoordinator,
+            )
+
+        override val cancelChatRunUseCase: CancelChatRunUseCase
+            get() = CancelChatRunUseCaseImpl(
+                runRepository = agentRunRepository,
+                cancelRun = cancelAgentRunUseCase,
             )
 
         override val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase

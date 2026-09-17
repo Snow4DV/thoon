@@ -73,7 +73,8 @@ class ChatPresenter(
 
                 is ChatUiEvent.Ui.PromptSubmitted -> {
                     val id = chatId
-                    if (id != null && event.prompt.isNotBlank()) {
+                    // Not while a run is live: the field shows stop, and the draft must survive.
+                    if (id != null && event.prompt.isNotBlank() && chatState?.isWorking != true) {
                         prompt = ""
                         scope.launch { sendPrompt(chatId = id, text = event.prompt) }
                     }

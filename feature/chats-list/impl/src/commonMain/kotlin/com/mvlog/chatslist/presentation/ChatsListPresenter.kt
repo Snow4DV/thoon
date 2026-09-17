@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.mvlog.agent.api.model.ChatId
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
 import com.mvlog.agentconfig.api.AgentConfigurationScreen
@@ -22,6 +23,7 @@ class ChatsListPresenter(
     private val navigator: Navigator,
     private val searchChats: SearchChatsUseCase,
     private val deleteChat: DeleteChatUseCase,
+    private val cancelChatRun: CancelChatRunUseCase,
 ) : Presenter<ChatsListUiState> {
 
     @Composable
@@ -50,6 +52,10 @@ class ChatsListPresenter(
 
                 is ChatsListUiEvent.Ui.DeleteClicked ->
                     scope.launch { deleteChat(ChatId(event.id)) }
+
+                // The row settles by itself: isWorking comes from the run repository.
+                is ChatsListUiEvent.Ui.StopClicked ->
+                    scope.launch { cancelChatRun(ChatId(event.id)) }
 
                 ChatsListUiEvent.Ui.SettingsClicked ->
                     navigator.goTo(AgentConfigurationScreen())

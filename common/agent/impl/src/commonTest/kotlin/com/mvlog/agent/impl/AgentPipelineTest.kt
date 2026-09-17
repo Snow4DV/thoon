@@ -107,6 +107,32 @@ class AgentPipelineTest {
     }
 
     @Test
+    fun stoppingAChatCancelsItsRunningAndQueuedRuns() = pipelineTest {
+        sendPrompt(chatId, "first")
+        sendPrompt(chatId, "second")
+        advanceTimeBy(60) // the first answer is streaming, the second is queued
+
+        cancelChatRun(chatId)
+        advanceUntilIdle()
+
+        val stopped = states.last()
+        assertEquals(ChatExecutionState.Idle, stopped.execution, "stop must leave nothing running or queued")
+        val answers = stopped.items.filterIsInstance<ChatItem.AssistantMessage>().map { it.text }
+        assertTrue(
+            answers.none { it == "You said: second" },
+            "a queued prompt must not run after stop, answers were: $answers",
+        )
+    }
+
+    @Test
+    fun stoppingAnIdleChatIsANoOp() = pipelineTest {
+        cancelChatRun(chatId)
+        advanceUntilIdle()
+
+        assertEquals(ChatExecutionState.Idle, states.last().execution)
+    }
+
+    @Test
     fun cancellingMidRunSettlesTheStreamingEntry() = pipelineTest {
         val runId = sendPrompt(chatId, "cancel me")
         // Far enough in that the answer has started streaming, well short of completing it.
@@ -140,6 +166,7 @@ class AgentPipelineTest {
     ) {
         val sendPrompt = component.sendPromptUseCase()
         val cancelAgentRun = component.cancelAgentRunUseCase()
+        val cancelChatRun = component.cancelChatRunUseCase()
         val observeChats = component.observeChatsUseCase()
         val searchChats = component.searchChatsUseCase()
         val startRuntime = component.startAgentRuntimeUseCase()

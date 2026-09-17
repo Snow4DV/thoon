@@ -1,6 +1,7 @@
 package com.mvlog.agent.impl.fake
 
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -35,6 +36,7 @@ import com.mvlog.agent.impl.domain.repository.ChatRepository
 import com.mvlog.agent.impl.domain.repository.CheckpointRepository
 import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.agent.impl.domain.usecase.CancelAgentRunUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.CancelChatRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateAgentConfigUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateChatUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.DeleteChatUseCaseImpl
@@ -207,6 +209,12 @@ internal class TestAgentModule(
         get() = CancelAgentRunUseCaseImpl(
             runRepository = agentRunRepository,
             canceller = runCoordinator,
+        )
+
+    override val cancelChatRunUseCase: CancelChatRunUseCase
+        get() = CancelChatRunUseCaseImpl(
+            runRepository = agentRunRepository,
+            cancelRun = cancelAgentRunUseCase,
         )
 
     override val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase

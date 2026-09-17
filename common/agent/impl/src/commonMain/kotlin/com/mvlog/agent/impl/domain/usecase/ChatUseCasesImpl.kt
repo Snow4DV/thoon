@@ -7,6 +7,7 @@ import com.mvlog.agent.api.model.ChatState
 import com.mvlog.agent.api.model.ChatSummary
 import com.mvlog.agent.api.model.ChatSearchResult
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
@@ -192,6 +193,21 @@ internal class CancelAgentRunUseCaseImpl(
         if (!interrupted && run.status == AgentRunStatus.Queued) {
             runRepository.markCancelled(runId)
         }
+    }
+}
+
+internal class CancelChatRunUseCaseImpl(
+    private val runRepository: AgentRunRepository,
+    private val cancelRun: CancelAgentRunUseCase,
+) : CancelChatRunUseCase {
+
+    override suspend fun invoke(chatId: ChatId) {
+        // Queued first: the worker picks the next run the moment the live one ends, so cancelling
+        // the live one first would hand the queue a head start.
+        runRepository.observeRuns(chatId).first()
+            .filter { !it.status.isTerminal }
+            .sortedBy { it.status == AgentRunStatus.Running }
+            .forEach { cancelRun(it.id) }
     }
 }
 

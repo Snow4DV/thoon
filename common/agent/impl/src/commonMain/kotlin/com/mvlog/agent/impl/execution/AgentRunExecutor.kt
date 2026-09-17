@@ -1,6 +1,7 @@
 package com.mvlog.agent.impl.execution
 
 import com.mvlog.agent.impl.domain.entity.AgentRun
+import com.mvlog.agent.impl.domain.entity.AgentRunStatus
 import com.mvlog.agent.impl.domain.repository.AgentRunRepository
 import com.mvlog.agent.impl.domain.repository.ChatRepository
 import com.mvlog.agent.impl.domain.usecase.ResolveAgentConfigUseCase
@@ -26,6 +27,9 @@ internal class AgentRunExecutor(
     }
 
     private suspend fun executeLocked(run: AgentRun) {
+        // Re-read: a queued run can be cancelled between the worker picking it and getting here.
+        if (runRepository.get(run.id)?.status != AgentRunStatus.Queued) return
+
         val config = resolveConfig(run.chatId)
         runRepository.markRunning(run.id, config?.id)
 

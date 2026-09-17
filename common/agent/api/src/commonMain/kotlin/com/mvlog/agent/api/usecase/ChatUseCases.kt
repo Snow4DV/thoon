@@ -58,6 +58,11 @@ fun interface CancelAgentRunUseCase {
     suspend operator fun invoke(runId: AgentRunId)
 }
 
+/** Stops whatever the chat is doing: the executing run and anything queued behind it. */
+fun interface CancelChatRunUseCase {
+    suspend operator fun invoke(chatId: ChatId)
+}
+
 /** The chat's explicit override. Null means it follows the default. */
 fun interface ObserveChatConfigOverrideUseCase {
     operator fun invoke(chatId: ChatId): Flow<AgentConfigId?>

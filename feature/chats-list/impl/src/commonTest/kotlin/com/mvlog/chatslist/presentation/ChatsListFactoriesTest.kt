@@ -1,6 +1,7 @@
 package com.mvlog.chatslist.presentation
 
 import com.mvlog.chatslist.api.ChatsListScreen
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
 import com.slack.circuit.runtime.CircuitContext
@@ -55,5 +56,6 @@ class ChatsListFactoriesTest {
     private fun presenterFactory() = ChatsListPresenterFactory(
         searchChats = SearchChatsUseCase { flowOf(emptyList()) },
         deleteChat = DeleteChatUseCase { },
+        cancelChatRun = CancelChatRunUseCase { },
     )
 }

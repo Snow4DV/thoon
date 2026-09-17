@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Send
+import com.composables.icons.lucide.Square
 import com.composables.ui.components.ButtonStyle
 import com.composables.ui.components.Icon
 import com.composables.ui.components.IconButton
@@ -51,9 +52,10 @@ fun ChatUiPromptField(
     onPromptChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
-    /** The agent is answering; the field stays usable, prompts queue behind the run. */
+    /** The agent is answering: the trailing button becomes stop and submit is refused. */
     isWorking: Boolean = false,
     onSubmit: (String) -> Unit = {},
+    onStop: () -> Unit = {},
 ) {
     val textFieldState = rememberSaveable(saver = TextFieldState.Saver) { TextFieldState(initialPrompt) }
     val latestOnPromptChanged by rememberUpdatedState(onPromptChanged)
@@ -73,6 +75,8 @@ fun ChatUiPromptField(
     // Read from the field: the debounced callback can be behind. Shared by the button and the IME
     // action.
     fun submit() {
+        // Refused, not queued: the draft stays in the field until the agent has stopped.
+        if (isWorking) return
         val prompt = textFieldState.text.toString()
         if (prompt.isNotBlank()) {
             latestOnSubmit(prompt)
@@ -100,14 +104,31 @@ fun ChatUiPromptField(
             onKeyboardAction = KeyboardActionHandler { submit() },
         )
 
-        IconButton(
-            onClick = ::submit,
-            enabled = !isLoading && canSend,
-            style = ButtonStyle.Primary,
-        ) {
-            Icon(Lucide.Send, contentDescription = "Send")
+        when (val action = promptFieldAction(isWorking = isWorking, canSend = canSend)) {
+            PromptFieldAction.Stop -> IconButton(onClick = onStop, style = ButtonStyle.Primary) {
+                Icon(Lucide.Square, contentDescription = "Stop")
+            }
+
+            PromptFieldAction.Send,
+            PromptFieldAction.SendDisabled,
+            -> IconButton(
+                onClick = ::submit,
+                enabled = !isLoading && action == PromptFieldAction.Send,
+                style = ButtonStyle.Primary,
+            ) {
+                Icon(Lucide.Send, contentDescription = "Send")
+            }
         }
     }
+}
+
+internal enum class PromptFieldAction { Stop, Send, SendDisabled }
+
+/** Stop wins while the agent works; otherwise sending needs text. */
+internal fun promptFieldAction(isWorking: Boolean, canSend: Boolean): PromptFieldAction = when {
+    isWorking -> PromptFieldAction.Stop
+    canSend -> PromptFieldAction.Send
+    else -> PromptFieldAction.SendDisabled
 }
 
 @Preview

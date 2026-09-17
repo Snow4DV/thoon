@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings
+import com.composables.icons.lucide.Square
 import com.composables.icons.lucide.Trash2
 import com.composables.ui.components.Button
 import com.composables.ui.components.ButtonStyle
@@ -42,6 +43,13 @@ import com.mvlog.chatslist.presentation.ChatsListUiState
 import com.mvlog.chatslist.presentation.ui.component.ChatsListBottomBar
 import com.mvlog.chatslist.presentation.ui.component.ChatsSearchField
 import com.mvlog.ui.ThoonTypography
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import com.valentinilk.shimmer.ShimmerBounds
+import com.valentinilk.shimmer.defaultShimmerTheme
+import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 
 @Composable
@@ -148,6 +156,7 @@ private fun ColumnScope.ChatList(state: ChatsListUiState.Data) {
                         ChatsListUiEvent.Ui.ChatClicked(chat.id, chat.messageSequence)
                     )
                 },
+                onStop = { state.eventSink(ChatsListUiEvent.Ui.StopClicked(chat.id)) },
                 onDelete = { state.eventSink(ChatsListUiEvent.Ui.DeleteClicked(chat.id)) },
             )
         }
@@ -159,6 +168,7 @@ private fun ChatListRow(
     chat: ChatRow,
     query: String,
     onClick: () -> Unit,
+    onStop: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val matchStyle = SpanStyle(
@@ -176,7 +186,7 @@ private fun ChatListRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = highlight(chat.label, query, matchStyle),
-                modifier = if (chat.isWorking) Modifier.shimmer() else Modifier,
+                modifier = if (chat.isWorking) Modifier.shimmer(rememberWorkingShimmer()) else Modifier,
                 style = ThoonTypography.h5,
                 singleLine = true,
                 overflow = TextOverflow.Ellipsis,
@@ -192,11 +202,35 @@ private fun ChatListRow(
             }
         }
 
+        if (chat.isWorking) {
+            IconButton(onClick = onStop, style = ButtonStyle.Ghost) {
+                Icon(Lucide.Square, contentDescription = "Stop agent")
+            }
+        }
+
         IconButton(onClick = onDelete, style = ButtonStyle.Ghost) {
             Icon(Lucide.Trash2, contentDescription = "Delete chat")
         }
     }
 }
+
+@Composable
+private fun rememberWorkingShimmer() = rememberShimmer(
+    shimmerBounds = ShimmerBounds.View,
+    theme = defaultShimmerTheme.copy(
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = WORKING_SHIMMER_SWEEP_MILLIS,
+                delayMillis = WORKING_SHIMMER_PAUSE_MILLIS,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
+    ),
+)
+
+private const val WORKING_SHIMMER_SWEEP_MILLIS = 800
+private const val WORKING_SHIMMER_PAUSE_MILLIS = 300
 
 @Composable
 private fun ColumnScope.EmptyState(

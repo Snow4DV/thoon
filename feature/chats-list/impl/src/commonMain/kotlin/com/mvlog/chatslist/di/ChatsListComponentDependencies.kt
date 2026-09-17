@@ -1,6 +1,7 @@
 package com.mvlog.chatslist.di
 
 import com.mvlog.agent.api.di.ThoonAgentComponentHolder
+import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
 
@@ -11,6 +12,9 @@ internal interface ChatsListComponentDependencies {
 
     val deleteChatUseCase: DeleteChatUseCase
         get() = ThoonAgentComponentHolder.get().deleteChatUseCase()
+
+    val cancelChatRunUseCase: CancelChatRunUseCase
+        get() = ThoonAgentComponentHolder.get().cancelChatRunUseCase()
 
     class Impl : ChatsListComponentDependencies
 }

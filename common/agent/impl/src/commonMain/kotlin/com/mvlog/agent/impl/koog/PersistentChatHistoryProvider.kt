@@ -20,11 +20,12 @@ internal class PersistentChatHistoryProvider(
         val chatId = ChatId(conversationId)
         val messages = uncommittedMessages(chatId) ?: committedMessages(chatId)
 
-        // Drop the trailing prompt (the run re-sends it) but keep trailing tool results, which a
+        // Drop only the trailing prompt the run re-sends. An earlier unanswered prompt (a stopped or
+        // failed run) is history the model must still see, and trailing tool results are what a
         // resumed turn needs.
-        return messages.dropLastWhile {
-            it is Message.User && it.parts.none { part -> part is MessagePart.Tool.Result }
-        }
+        val last = messages.lastOrNull() ?: return messages
+        val isPlainPrompt = last is Message.User && last.parts.none { it is MessagePart.Tool.Result }
+        return if (isPlainPrompt) messages.dropLast(1) else messages
     }
 
     override suspend fun store(conversationId: String, messages: List<Message>) {
