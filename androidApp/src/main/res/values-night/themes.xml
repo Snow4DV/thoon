@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark window background before Compose paints, or dark mode launches with a white flash. -->
+    <style name="Theme.Thoon" parent="@android:style/Theme.Material.NoActionBar" />
+</resources>

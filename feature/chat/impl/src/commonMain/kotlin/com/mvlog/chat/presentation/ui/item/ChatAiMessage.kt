@@ -30,7 +30,6 @@ import com.mvlog.markdown.ThoonMarkdown
 import com.mvlog.ui.ThoonPreview
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
-import kotlin.time.Instant
 
 @Composable
 fun ChatAiMessage(

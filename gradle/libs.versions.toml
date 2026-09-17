@@ -30,11 +30,11 @@ kotlinxSerialization = "1.11.0"
 kotlinxDatetime = "0.7.1"
 hrmMarkdown = "1.5.3"
 composeShimmer = "1.5.0"
-koog = "1.1.1"
+koog = "1.2.0"
 ksp = "2.3.12"
 room = "2.8.4"
 sqlite = "2.7.0"
-ktor = "3.3.3"
+ktor = "3.6.0"
 okio = "3.16.2"
 
 [libraries]
