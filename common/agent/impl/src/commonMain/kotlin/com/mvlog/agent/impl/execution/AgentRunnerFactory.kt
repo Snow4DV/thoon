@@ -1,7 +1,9 @@
 package com.mvlog.agent.impl.execution
 
 import com.mvlog.agent.api.model.AgentConfig
+import com.mvlog.agent.impl.domain.approval.ToolApprovalResolver
 import com.mvlog.agent.impl.domain.repository.ChatRepository
+import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.agent.impl.koog.KoogAgentRunner
 import com.mvlog.agent.impl.koog.KoogClientFactory
 import com.mvlog.agent.impl.koog.KoogToolRegistryFactory
@@ -16,10 +18,12 @@ internal interface AgentRunnerFactory {
 
 internal class DefaultAgentRunnerFactory(
     private val chatRepository: ChatRepository,
+    private val conversationRepository: ConversationRepository,
     private val historyProvider: PersistentChatHistoryProvider,
     private val persistenceStorage: RoomPersistenceStorageProvider,
     private val clientFactory: KoogClientFactory,
     private val toolRegistryFactory: KoogToolRegistryFactory,
+    private val approvals: ToolApprovalResolver,
     private val clock: AgentClock,
 ) : AgentRunnerFactory {
 
@@ -34,9 +38,11 @@ internal class DefaultAgentRunnerFactory(
         -> KoogAgentRunner(
             target = clientFactory.create(config),
             chatRepository = chatRepository,
+            conversationRepository = conversationRepository,
             historyProvider = historyProvider,
             persistenceStorage = persistenceStorage,
             toolRegistryFactory = toolRegistryFactory,
+            approvals = approvals,
             clock = clock,
         )
 

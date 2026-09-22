@@ -30,6 +30,7 @@ import com.composables.icons.lucide.CircleCheck
 import com.composables.icons.lucide.CircleX
 import com.composables.icons.lucide.Loader
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ShieldQuestion
 import com.composables.icons.lucide.Wrench
 import com.composables.ui.components.Disclosure
 import com.composables.ui.components.DisclosurePanel
@@ -114,6 +115,12 @@ fun ChatToolChainCall(
                         fontSize = 13.sp,
                     )
 
+                    ChatItem.ToolChainCall.Status.AwaitingApproval -> Text(
+                        text = action,
+                        color = mutedContentColor,
+                        fontSize = 13.sp,
+                    )
+
                     ChatItem.ToolChainCall.Status.Loading -> Unit
                 }
             }
@@ -141,6 +148,12 @@ private fun ChatToolChainCallStatusIcon(status: ChatItem.ToolChainCall.Status) {
                 modifier = Modifier.size(16.dp).rotate(angle),
             )
         }
+
+        ChatItem.ToolChainCall.Status.AwaitingApproval -> Icon(
+            imageVector = Lucide.ShieldQuestion,
+            tint = Theme[colors][primaryColor],
+            modifier = Modifier.size(16.dp),
+        )
 
         is ChatItem.ToolChainCall.Status.Success -> Icon(
             imageVector = Lucide.CircleCheck,

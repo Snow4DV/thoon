@@ -1,6 +1,7 @@
 package com.mvlog.chat.presentation
 
 import androidx.compose.runtime.Immutable
+import com.mvlog.agent.api.model.ToolApprovalDecision
 import com.mvlog.chat.presentation.item.ChatItem
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -36,6 +37,8 @@ sealed interface ChatUiState : CircuitUiState {
          */
         val isDeepLinked: Boolean,
         val isThinking: Boolean,
+        /** A tool call waits on the user; the field takes no prompt until it is answered. */
+        val isAwaitingApproval: Boolean,
         val isRefreshing: Boolean,
         override val isChatOptionsMenuVisible: Boolean,
         override val chatTitle: String,
@@ -60,5 +63,6 @@ sealed interface ChatUiEvent : CircuitUiEvent {
         data class PromptSubmitted(val prompt: String) : Ui
 
         data object CancelGenerationClicked : Ui
+        data class ToolCallDecided(val toolCallKey: String, val decision: ToolApprovalDecision) : Ui
     }
 }

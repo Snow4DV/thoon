@@ -5,6 +5,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.RequestMetaInfo
 import com.mvlog.agent.api.model.ChatId
+import com.mvlog.agent.impl.domain.approval.PendingToolCall
 import com.mvlog.agent.impl.domain.entity.ChatEntry
 import com.mvlog.agent.impl.domain.repository.ChatHistoryRepository
 import com.mvlog.agent.impl.domain.repository.ChatMetadataRepository
@@ -50,10 +51,17 @@ internal class KoogConversationRepository(
             ?.let { last -> last is Message.User && last.parts.any { it is MessagePart.Tool.Result } }
             ?: false
 
+    override suspend fun pendingToolCalls(chatId: ChatId): List<PendingToolCall> =
+        messages(chatId).lastOrNull().trailingToolCalls().toPendingToolCalls()
+
     override suspend fun chatsWithUnansweredPrompts(): List<ChatId> =
         metadataRepository.observeAll().first()
             .map { it.id }
-            .filter { unansweredPrompt(it) != null || hasUnfinishedToolTurn(it) }
+            .filter {
+                unansweredPrompt(it) != null ||
+                    hasUnfinishedToolTurn(it) ||
+                    pendingToolCalls(it).isNotEmpty()
+            }
 
     private suspend fun messages(chatId: ChatId): List<Message> =
         uncommittedMessages(chatId) ?: committedMessages(chatId)

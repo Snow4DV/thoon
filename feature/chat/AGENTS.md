@@ -72,3 +72,13 @@ are filtered before `takeLast`, or preview slots are spent on nothing.
   behind, and the same lambda serves the button and the IME action.
 - The options menu is anchored to the whole top bar: `ThoonTopBar` exposes a click lambda, not an
   anchor slot.
+
+## Tool approval
+
+A tool call the user has not yet allowed is its own list item, `ChatItem.ToolApproval`, rendered
+under the tool-call row rather than folded into it: the row is a disclosure, and a disclosure that
+also carries three buttons and a menu stops reading as one thing. While the chat is
+`AwaitingApproval` the prompt field is blocked and says why. It is not the working state, so there
+is no stop button; a prompt appended after an unanswered tool call is a request every provider
+rejects, so the only ways forward are the decisions on the item. The mechanics, and why the run
+ends instead of suspending inside the tool, are in `docs/architecture/AGENT_RUNTIME.md`.

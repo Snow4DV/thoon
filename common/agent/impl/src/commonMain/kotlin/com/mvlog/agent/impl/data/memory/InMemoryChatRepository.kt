@@ -156,6 +156,20 @@ internal class InMemoryChatRepository(
                 ?.id
         }
 
+    override suspend fun findOpenToolCallEntryId(chatId: ChatId, toolCallId: String): String? =
+        store.transaction {
+            store.entries.value[chatId]
+                .orEmpty()
+                .filterIsInstance<ChatEntry.ToolCall>()
+                .lastOrNull { it.toolCallId == toolCallId && it.status.isOpen() }
+                ?.id
+        }
+
+    private fun ToolCallStatus.isOpen(): Boolean =
+        this is ToolCallStatus.Pending ||
+            this is ToolCallStatus.AwaitingApproval ||
+            this is ToolCallStatus.Running
+
     override suspend fun settleStreamingEntries(runId: AgentRunId) {
         val now = clock.now()
         store.transaction {

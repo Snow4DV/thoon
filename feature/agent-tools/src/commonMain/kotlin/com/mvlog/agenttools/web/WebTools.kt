@@ -35,6 +35,7 @@ internal class FetchUrlTool(private val httpClient: HttpClient) : ThoonAgentTool
         parameters = listOf(
             AgentToolParameter(name = "url", description = "The full URL, including https://."),
         ),
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String {
@@ -72,6 +73,7 @@ internal class WebSearchTool(private val httpClient: HttpClient) : ThoonAgentToo
         parameters = listOf(
             AgentToolParameter(name = "query", description = "What to search for."),
         ),
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String {

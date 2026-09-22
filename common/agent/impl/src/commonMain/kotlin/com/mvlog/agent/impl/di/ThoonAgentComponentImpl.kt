@@ -2,7 +2,12 @@ package com.mvlog.agent.impl.di
 
 import com.mvlog.agent.api.di.ThoonAgentComponent
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.AddToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CancelChatRunUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
+import com.mvlog.agent.api.usecase.GetApprovalGatedToolsUseCase
+import com.mvlog.agent.api.usecase.ObserveToolApprovalRulesUseCase
+import com.mvlog.agent.api.usecase.RevokeToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -51,6 +56,20 @@ internal class ThoonAgentComponentImpl(
         module.observeChatConfigOverrideUseCase
 
     override fun setChatConfigUseCase(): SetChatConfigUseCase = module.setChatConfigUseCase
+
+    override fun decideToolCallUseCase(): DecideToolCallUseCase = module.decideToolCallUseCase
+
+    override fun observeToolApprovalRulesUseCase(): ObserveToolApprovalRulesUseCase =
+        module.observeToolApprovalRulesUseCase
+
+    override fun addToolApprovalRuleUseCase(): AddToolApprovalRuleUseCase =
+        module.addToolApprovalRuleUseCase
+
+    override fun revokeToolApprovalRuleUseCase(): RevokeToolApprovalRuleUseCase =
+        module.revokeToolApprovalRuleUseCase
+
+    override fun getApprovalGatedToolsUseCase(): GetApprovalGatedToolsUseCase =
+        module.getApprovalGatedToolsUseCase
 
     override fun observeAgentConfigsUseCase(): ObserveAgentConfigsUseCase =
         module.observeAgentConfigsUseCase

@@ -1,12 +1,16 @@
 package com.mvlog.agentconfig.presentation
 
 import com.mvlog.agent.api.engine.LocalEngineProvider
+import com.mvlog.agent.api.usecase.AddToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetApprovalGatedToolsUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveToolApprovalRulesUseCase
+import com.mvlog.agent.api.usecase.RevokeToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
@@ -39,6 +43,10 @@ internal class AgentConfigurationPresenterFactory(
     private val setDefaultConfig: SetDefaultAgentConfigUseCase,
     private val observeChatConfigOverride: ObserveChatConfigOverrideUseCase,
     private val setChatConfig: SetChatConfigUseCase,
+    private val observeToolApprovalRules: ObserveToolApprovalRulesUseCase,
+    private val addToolApprovalRule: AddToolApprovalRuleUseCase,
+    private val revokeToolApprovalRule: RevokeToolApprovalRuleUseCase,
+    private val getApprovalGatedTools: GetApprovalGatedToolsUseCase,
     /** Read per editor, not per factory, so a late-registered engine shows on the next open. */
     private val localEngineProvider: LocalEngineProvider,
 ) : Presenter.Factory {
@@ -48,7 +56,14 @@ internal class AgentConfigurationPresenterFactory(
         navigator: Navigator,
         context: CircuitContext,
     ): Presenter<*>? = when (screen) {
-        is AgentConfigurationScreen -> AgentConfigurationPresenter(screen, navigator)
+        is AgentConfigurationScreen -> AgentConfigurationPresenter(
+            screen = screen,
+            navigator = navigator,
+            observeToolApprovalRules = observeToolApprovalRules,
+            addToolApprovalRule = addToolApprovalRule,
+            revokeToolApprovalRule = revokeToolApprovalRule,
+            getApprovalGatedTools = getApprovalGatedTools,
+        )
 
         is AgentConfigListScreen -> AgentConfigListPresenter(
             navigator = navigator,
@@ -75,6 +90,10 @@ internal class AgentConfigurationPresenterFactory(
             observeChatConfigOverride = observeChatConfigOverride,
             observeDefaultConfig = observeDefaultConfig,
             setChatConfig = setChatConfig,
+            observeToolApprovalRules = observeToolApprovalRules,
+            addToolApprovalRule = addToolApprovalRule,
+            revokeToolApprovalRule = revokeToolApprovalRule,
+            getApprovalGatedTools = getApprovalGatedTools,
         )
 
         else -> null

@@ -29,7 +29,8 @@ depends on the operations it performs. Everything behind them (`ChatRepository`,
 3. `AgentRunExecutor` resolves the config once, when the run starts (per-chat override, else the
    global default), and runs under the chat's lock. Every exit, including cancellation, settles the
    streaming entries so the timeline never shows a run that no longer exists.
-4. `KoogAgentRunner` builds a Koog graph: `respond → executeTools → sendToolResults → …`. Edge
+4. `KoogAgentRunner` builds a Koog graph: `respond → executeTools → sendToolResults → …`, with
+   `executeDecided → sendToolResults` entered directly for a turn the user has decided on. Edge
    order is load-bearing — a turn carrying both text and a tool call must take the tool edge, and
    `AIAgentNode` takes the *first* accepting edge. Koog's `ChatMemory` restores the conversation at
    run start and commits it at run end; `Persistence` checkpoints per node. Both reach Room through
@@ -42,13 +43,49 @@ depends on the operations it performs. Everything behind them (`ChatRepository`,
 
 ## What a chat is waiting on
 
-`RetryChatUseCase` defines it: an unanswered prompt, or a turn interrupted after its tools ran. A
-tool result is a user-role message with no text, so the unanswered-prompt check alone would read a
-conversation ending in tool results as nothing pending; `hasUnfinishedToolTurn` covers that case.
-Startup recovery (`StartAgentRuntimeUseCase`, run once from `ThoonAgentInitializer`) and the retry
-button both call it, so they cannot disagree. An interrupted tool turn is resumed by enqueuing a
-**blank** prompt: the conversation already ends with the results the model has not read, and
-appending anything would put a phantom user message in the transcript.
+`RetryChatUseCase` defines it: an unanswered prompt, a turn interrupted after its tools ran, or a
+turn stopped for approval whose every call now has a decision. A tool result is a user-role message
+with no text, so the unanswered-prompt check alone would read a conversation ending in tool results
+as nothing pending; `hasUnfinishedToolTurn` covers that case, and `pendingToolCalls` the third.
+Startup recovery (`StartAgentRuntimeUseCase`, run once from `ThoonAgentInitializer`), the retry
+button and the approve button all call it, so they cannot disagree. Both tool cases are resumed by
+enqueuing a **blank** prompt: the conversation already ends with what the model has not read, and
+appending anything would put a phantom user message in the transcript. A free tool's call left
+unanswered by a dead run is *not* resumed: that is a crash to retry by hand, not a wait.
+
+## Tool approval
+
+A tool whose spec sets `requiresApproval` does not run until the user allows it. Nothing suspends
+inside the tool. A **pending turn** is a conversation whose last message is an assistant message
+carrying tool calls with no results; before this feature only a dead run left one, now it is also
+how a run ends when a call needs a decision. The pieces:
+
+- `ToolApprovalResolver` gives every call of a pending turn one verdict: *allowed* (not gated, or a
+  stored rule matches), *approved* or *declined* (the user answered this call), or *undecided*. The
+  graph, `RetryChatUseCase` and the timeline all ask it, which is what keeps them from disagreeing.
+- The graph's tool edges accept a turn only when every call may execute; otherwise the turn falls
+  through to the unconditional finish edge and the run ends **normally**. That matters: `ChatMemory`
+  commits the turn and `Persistence` writes its tombstone, so the pending call is durable history
+  and the next run starts fresh. The edges out of `nodeStart` then take a blank prompt over a
+  decided pending turn straight to `executeDecided`, which runs the approved calls and answers the
+  declined ones with an error result reading "Declined by the user.", all in one user message, as
+  every provider requires. The model never sees an approval; it sees results.
+- Decisions live in `ToolApprovalDecisions`, in memory, like the run queue they feed; the executor
+  clears a chat's decisions on every exit. The safe failure for a lost decision is to ask again.
+  "Always" rules live in Room (`agent_tool_approval_rule`), global or per chat, optionally bound to
+  the values of parameters marked `requiresApprovalPerValue`; an empty parameter map is a blanket
+  rule, which is what a settings toggle makes.
+- The conversation stays single-writer: only the run writes tool results, declined ones included.
+- The timeline derives the pending turn from the entries themselves (the highest anchored turn,
+  all calls unanswered, no live run) and asks the resolver, so a gated undecided call shows as
+  `AwaitingApproval` followed by a `ChatItem.ToolApprovalRequest`, a free call in the same turn as
+  `Pending`, and the chat as `ChatExecutionState.AwaitingApproval`. The chat screen blocks the prompt
+  field in that state. The tool call key is the provider's id, or `call-N` by position when the
+  provider sends none.
+- After every run the Koog runner re-hydrates the timeline from what was committed, so the live
+  streaming entries are replaced by anchored ones and a turn that stopped for approval shows its
+  pending call at once. The sink reuses an existing open entry for a call it starts, or the resumed
+  call would appear twice.
 
 ## Checkpoints
 
@@ -86,7 +123,8 @@ loses nothing because the run, not the screen, owns the work.
 ## Tools
 
 Seven, all in `feature/agent-tools`: `list_files`, `read_file`, `write_file`, `edit_file`,
-`fetch_url`, `web_search`, `current_datetime`. They implement `ThoonAgentTool` from
+`fetch_url`, `web_search`, `current_datetime`. All but the last require approval (see Tool
+approval above). They implement `ThoonAgentTool` from
 `common:agent:tool-api`, a contract that depends on neither Koog nor `common:agent:api`, so a feature
 contributing a tool never compiles against the framework. `KoogToolRegistryFactory` is the adapter;
 `AgentToolSpec` is not a JSON schema, and `AgentToolParameterType` grows only with types the adapter

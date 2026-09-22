@@ -59,6 +59,7 @@ import com.mvlog.chat.presentation.item.ChatItem
 import com.mvlog.chat.presentation.ui.component.ChatUiPromptField
 import com.mvlog.chat.presentation.ui.item.ChatAiMessage
 import com.mvlog.chat.presentation.ui.item.ChatAiThought
+import com.mvlog.chat.presentation.ui.item.ChatToolApproval
 import com.mvlog.chat.presentation.ui.item.ChatToolChainCall
 import com.mvlog.chat.presentation.ui.item.ChatUserMessage
 import com.mvlog.chat.presentation.ui.item.shimmer.ChatAiMessageShimmer
@@ -100,6 +101,7 @@ fun ChatUi(
                 onPromptChanged = { state.eventSink(ChatUiEvent.Ui.PromptChanged(it)) },
                 onSubmit = { state.eventSink(ChatUiEvent.Ui.PromptSubmitted(it)) },
                 isWorking = state.isThinking,
+                isInputBlocked = state.isAwaitingApproval,
                 onStop = { state.eventSink(ChatUiEvent.Ui.CancelGenerationClicked) },
                 modifier = promptFieldModifier,
             )
@@ -268,6 +270,15 @@ private fun ChatUiDataContent(
                             state.eventSink(ChatUiEvent.Ui.ToolChainCallExpandedChanged(chatItem.id, it))
                         },
                     )
+
+                    is ChatItem.ToolApproval -> ChatToolApproval(
+                        toolName = chatItem.toolName,
+                        arguments = chatItem.action,
+                        decision = chatItem.decision,
+                        onDecided = {
+                            state.eventSink(ChatUiEvent.Ui.ToolCallDecided(chatItem.toolCallKey, it))
+                        },
+                    )
                 }
             }
         }
@@ -404,6 +415,7 @@ private fun loadedPreviewState() = ChatUiState.Data(
     highlightedItemId = null,
     isDeepLinked = false,
     isThinking = false,
+    isAwaitingApproval = false,
     isRefreshing = false,
     isChatOptionsMenuVisible = false,
     eventSink = {},

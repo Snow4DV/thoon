@@ -3,12 +3,16 @@ package com.mvlog.agentconfig.di
 import com.mvlog.agent.api.di.ThoonAgentComponentHolder
 import com.mvlog.agent.api.engine.LocalEngineProvider
 import com.mvlog.agent.api.engine.LocalEnginesCollector
+import com.mvlog.agent.api.usecase.AddToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.DeleteAgentConfigUseCase
 import com.mvlog.agent.api.usecase.GetAgentConfigUseCase
+import com.mvlog.agent.api.usecase.GetApprovalGatedToolsUseCase
 import com.mvlog.agent.api.usecase.ObserveAgentConfigsUseCase
 import com.mvlog.agent.api.usecase.ObserveChatConfigOverrideUseCase
 import com.mvlog.agent.api.usecase.ObserveDefaultAgentConfigUseCase
+import com.mvlog.agent.api.usecase.ObserveToolApprovalRulesUseCase
+import com.mvlog.agent.api.usecase.RevokeToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.SetChatConfigUseCase
 import com.mvlog.agent.api.usecase.SetDefaultAgentConfigUseCase
 import com.mvlog.agent.api.usecase.UpdateAgentConfigUseCase
@@ -24,6 +28,10 @@ internal interface AgentConfigurationComponentDependencies {
     val setDefaultAgentConfigUseCase: SetDefaultAgentConfigUseCase
     val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
     val setChatConfigUseCase: SetChatConfigUseCase
+    val observeToolApprovalRulesUseCase: ObserveToolApprovalRulesUseCase
+    val addToolApprovalRuleUseCase: AddToolApprovalRuleUseCase
+    val revokeToolApprovalRuleUseCase: RevokeToolApprovalRuleUseCase
+    val getApprovalGatedToolsUseCase: GetApprovalGatedToolsUseCase
 
     val localEngineProvider: LocalEngineProvider
 
@@ -54,6 +62,18 @@ internal interface AgentConfigurationComponentDependencies {
 
         override val setChatConfigUseCase: SetChatConfigUseCase
             get() = ThoonAgentComponentHolder.get().setChatConfigUseCase()
+
+        override val observeToolApprovalRulesUseCase: ObserveToolApprovalRulesUseCase
+            get() = ThoonAgentComponentHolder.get().observeToolApprovalRulesUseCase()
+
+        override val addToolApprovalRuleUseCase: AddToolApprovalRuleUseCase
+            get() = ThoonAgentComponentHolder.get().addToolApprovalRuleUseCase()
+
+        override val revokeToolApprovalRuleUseCase: RevokeToolApprovalRuleUseCase
+            get() = ThoonAgentComponentHolder.get().revokeToolApprovalRuleUseCase()
+
+        override val getApprovalGatedToolsUseCase: GetApprovalGatedToolsUseCase
+            get() = ThoonAgentComponentHolder.get().getApprovalGatedToolsUseCase()
 
         override val localEngineProvider: LocalEngineProvider
             get() = LocalEngineProvider { LocalEnginesCollector.obtain() }

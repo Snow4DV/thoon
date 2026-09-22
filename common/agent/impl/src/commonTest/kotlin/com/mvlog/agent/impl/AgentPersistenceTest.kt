@@ -368,10 +368,12 @@ class AgentPersistenceTest {
                     model = StubLLMClient.MODEL,
                 ),
                 chatRepository = module.chatRepository,
+                conversationRepository = module.conversationRepository,
                 historyProvider = module.chatHistoryProvider,
                 persistenceStorage = module.persistenceStorageProvider,
-                // Empty registry: no tool provider is registered in tests.
+                // Empty registry unless a test registers a provider in the collector.
                 toolRegistryFactory = KoogToolRegistryFactory(),
+                approvals = module.toolApprovalResolver,
                 clock = AgentClock.System,
             ).run(
                 AgentExecutionContext(

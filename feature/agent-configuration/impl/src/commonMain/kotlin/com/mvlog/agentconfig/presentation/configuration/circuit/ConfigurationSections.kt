@@ -1,6 +1,9 @@
 package com.mvlog.agentconfig.presentation.configuration.circuit
 
+import com.mvlog.agent.api.model.ToolApprovalRule
+import com.mvlog.agent.api.model.ToolApprovalRuleId
 import com.mvlog.agentconfig.api.ConfigurationSection
+import com.mvlog.agentconfig.presentation.common.settings.toolApprovalItems
 import com.mvlog.agentconfig.presentation.common.settings.ui.SettingItem
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -36,6 +39,10 @@ internal fun configurationRootItems(
 internal fun configurationSectionItems(
     section: ConfigurationSection,
     onOpenModelAndProvider: () -> Unit,
+    gatedTools: List<String> = emptyList(),
+    approvalRules: List<ToolApprovalRule> = emptyList(),
+    onAllowTool: (String) -> Unit = {},
+    onRevokeRule: (ToolApprovalRuleId) -> Unit = {},
 ): PersistentList<SettingItem> = when (section) {
     // The root row goes straight to the list; this branch is only reached via a restored back stack.
     ConfigurationSection.ModelAndProvider -> persistentListOf(
@@ -53,12 +60,20 @@ internal fun configurationSectionItems(
         ),
     )
 
-    ConfigurationSection.Tools -> persistentListOf(
-        SettingItem.Placeholder(
-            "Nothing to configure yet. Tools are contributed by feature modules and are all on; " +
-                "switching one off needs somewhere to remember that.",
-        ),
-    )
+    ConfigurationSection.Tools -> toolApprovalItems(
+        gatedTools = gatedTools,
+        rules = approvalRules,
+        scopeSubtitle = "Everywhere",
+        onAllow = onAllowTool,
+        onRevoke = onRevokeRule,
+    ).ifEmpty {
+        listOf(
+            SettingItem.Placeholder(
+                "No tool asks for approval, so there is nothing to allow in advance. Switching a " +
+                    "tool off entirely still needs somewhere to remember that.",
+            ),
+        )
+    }.toPersistentList()
 
     ConfigurationSection.Advanced -> persistentListOf(
         SettingItem.Placeholder("Nothing to configure yet."),

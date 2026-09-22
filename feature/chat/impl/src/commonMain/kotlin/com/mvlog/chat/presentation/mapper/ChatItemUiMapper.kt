@@ -41,6 +41,15 @@ internal fun AgentChatItem.toUi(
         status = state.toUi(),
         isExpanded = id in expandedIds,
     )
+
+    is AgentChatItem.ToolApprovalRequest -> ChatItem.ToolApproval(
+        id = id,
+        createdAt = createdAt,
+        toolCallKey = toolCallKey,
+        toolName = toolName,
+        action = arguments.orEmpty(),
+        decision = decision,
+    )
 }
 
 private fun ToolCallState.toUi(): ChatItem.ToolChainCall.Status = when (this) {
@@ -48,6 +57,7 @@ private fun ToolCallState.toUi(): ChatItem.ToolChainCall.Status = when (this) {
     ToolCallState.Running,
     -> ChatItem.ToolChainCall.Status.Loading
 
+    ToolCallState.AwaitingApproval -> ChatItem.ToolChainCall.Status.AwaitingApproval
     is ToolCallState.Completed -> ChatItem.ToolChainCall.Status.Success(result)
     is ToolCallState.Failed -> ChatItem.ToolChainCall.Status.Failure(error)
 }

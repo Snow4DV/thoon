@@ -1,7 +1,12 @@
 package com.mvlog.agent.impl.di
 
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.AddToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CancelChatRunUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
+import com.mvlog.agent.api.usecase.GetApprovalGatedToolsUseCase
+import com.mvlog.agent.api.usecase.ObserveToolApprovalRulesUseCase
+import com.mvlog.agent.api.usecase.RevokeToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -27,6 +32,10 @@ import com.mvlog.agent.impl.data.repository.RoomAgentConfigRepository
 import com.mvlog.agent.impl.data.repository.RoomChatHistoryRepository
 import com.mvlog.agent.impl.data.repository.RoomChatMetadataRepository
 import com.mvlog.agent.impl.data.repository.RoomCheckpointRepository
+import com.mvlog.agent.impl.data.repository.RoomToolApprovalRuleRepository
+import com.mvlog.agent.impl.domain.approval.ToolApprovalDecisions
+import com.mvlog.agent.impl.domain.approval.ToolApprovalResolver
+import com.mvlog.agent.impl.domain.approval.ToolSpecCatalog
 import com.mvlog.agent.impl.domain.repository.AgentConfigRepository
 import com.mvlog.agent.impl.domain.repository.AgentRunRepository
 import com.mvlog.agent.impl.domain.repository.ChatHistoryRepository
@@ -34,6 +43,12 @@ import com.mvlog.agent.impl.domain.repository.ChatMetadataRepository
 import com.mvlog.agent.impl.domain.repository.ChatRepository
 import com.mvlog.agent.impl.domain.repository.CheckpointRepository
 import com.mvlog.agent.impl.domain.repository.ConversationRepository
+import com.mvlog.agent.impl.domain.repository.ToolApprovalRuleRepository
+import com.mvlog.agent.impl.domain.usecase.AddToolApprovalRuleUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.DecideToolCallUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.GetApprovalGatedToolsUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.ObserveToolApprovalRulesUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.RevokeToolApprovalRuleUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CancelAgentRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CancelChatRunUseCaseImpl
 import com.mvlog.agent.impl.domain.usecase.CreateAgentConfigUseCaseImpl
@@ -80,6 +95,9 @@ internal interface ThoonAgentModule {
     val chatMetadataRepository: ChatMetadataRepository
     val conversationRepository: ConversationRepository
     val agentConfigRepository: AgentConfigRepository
+    val toolApprovalRuleRepository: ToolApprovalRuleRepository
+    val toolApprovalDecisions: ToolApprovalDecisions
+    val toolApprovalResolver: ToolApprovalResolver
 
     val chatHistoryProvider: PersistentChatHistoryProvider
     val persistenceStorageProvider: RoomPersistenceStorageProvider
@@ -102,6 +120,12 @@ internal interface ThoonAgentModule {
     val observeChatConfigOverrideUseCase: ObserveChatConfigOverrideUseCase
     val setChatConfigUseCase: SetChatConfigUseCase
 
+    val decideToolCallUseCase: DecideToolCallUseCase
+    val observeToolApprovalRulesUseCase: ObserveToolApprovalRulesUseCase
+    val addToolApprovalRuleUseCase: AddToolApprovalRuleUseCase
+    val revokeToolApprovalRuleUseCase: RevokeToolApprovalRuleUseCase
+    val getApprovalGatedToolsUseCase: GetApprovalGatedToolsUseCase
+
     val observeAgentConfigsUseCase: ObserveAgentConfigsUseCase
     val getAgentConfigUseCase: GetAgentConfigUseCase
     val observeDefaultAgentConfigUseCase: ObserveDefaultAgentConfigUseCase
@@ -116,7 +140,8 @@ internal interface ThoonAgentModule {
 
         private val agentConfigMapper: AgentConfigMapper get() = AgentConfigMapper(json)
 
-        private val chatStateApiMapper: ChatStateApiMapper get() = ChatStateApiMapper()
+        private val chatStateApiMapper: ChatStateApiMapper
+            get() = ChatStateApiMapper(toolApprovalResolver)
 
         private val historyCodec: KoogMessageRowCodec get() = KoogMessageRowCodec(json, idGenerator)
 
@@ -146,6 +171,19 @@ internal interface ThoonAgentModule {
                 dao = daoFactory.get(),
                 mapper = agentConfigMapper,
                 clock = clock,
+            )
+
+        override val toolApprovalRuleRepository: ToolApprovalRuleRepository
+            get() = RoomToolApprovalRuleRepository(dao = daoFactory.get(), json = json)
+
+        // Stored: decisions live only in memory, and a fresh registry per access would forget them.
+        override val toolApprovalDecisions: ToolApprovalDecisions = ToolApprovalDecisions()
+
+        override val toolApprovalResolver: ToolApprovalResolver
+            get() = ToolApprovalResolver(
+                catalog = ToolSpecCatalog.Collected,
+                rules = toolApprovalRuleRepository,
+                decisions = toolApprovalDecisions,
             )
 
         override val conversationRepository: ConversationRepository
@@ -180,10 +218,12 @@ internal interface ThoonAgentModule {
         override val agentRunnerFactory: AgentRunnerFactory
             get() = DefaultAgentRunnerFactory(
                 chatRepository = chatRepository,
+                conversationRepository = conversationRepository,
                 historyProvider = chatHistoryProvider,
                 persistenceStorage = persistenceStorageProvider,
                 clientFactory = koogClientFactory,
                 toolRegistryFactory = koogToolRegistryFactory,
+                approvals = toolApprovalResolver,
                 clock = clock,
             )
 
@@ -197,6 +237,7 @@ internal interface ThoonAgentModule {
                 runRepository = agentRunRepository,
                 chatRepository = chatRepository,
                 mutexes = chatRunMutexRegistry,
+                approvalDecisions = toolApprovalDecisions,
             )
 
         // by lazy: cancelRunning must reach the instance that owns the jobs.
@@ -224,6 +265,8 @@ internal interface ThoonAgentModule {
                 chatRepository = chatRepository,
                 runRepository = agentRunRepository,
                 conversationRepository = conversationRepository,
+                approvalRules = toolApprovalRuleRepository,
+                approvalDecisions = toolApprovalDecisions,
                 mapper = chatStateApiMapper,
             )
 
@@ -240,11 +283,16 @@ internal interface ThoonAgentModule {
             get() = RetryChatUseCaseImpl(
                 conversationRepository = conversationRepository,
                 runRepository = agentRunRepository,
+                approvals = toolApprovalResolver,
                 idGenerator = idGenerator,
             )
 
         override val deleteChatUseCase: DeleteChatUseCase
-            get() = DeleteChatUseCaseImpl(chatMetadataRepository)
+            get() = DeleteChatUseCaseImpl(
+                metadataRepository = chatMetadataRepository,
+                approvalRules = toolApprovalRuleRepository,
+                approvalDecisions = toolApprovalDecisions,
+            )
 
         override val sendPromptUseCase: SendPromptUseCase
             get() = SendPromptUseCaseImpl(
@@ -272,6 +320,35 @@ internal interface ThoonAgentModule {
 
         override val setChatConfigUseCase: SetChatConfigUseCase
             get() = SetChatConfigUseCaseImpl(agentConfigRepository, chatMetadataRepository)
+
+        override val decideToolCallUseCase: DecideToolCallUseCase
+            get() = DecideToolCallUseCaseImpl(
+                conversationRepository = conversationRepository,
+                rules = toolApprovalRuleRepository,
+                decisions = toolApprovalDecisions,
+                approvals = toolApprovalResolver,
+                retryChat = retryChatUseCase,
+                idGenerator = idGenerator,
+                clock = clock,
+            )
+
+        override val observeToolApprovalRulesUseCase: ObserveToolApprovalRulesUseCase
+            get() = ObserveToolApprovalRulesUseCaseImpl(toolApprovalRuleRepository)
+
+        override val addToolApprovalRuleUseCase: AddToolApprovalRuleUseCase
+            get() = AddToolApprovalRuleUseCaseImpl(
+                rules = toolApprovalRuleRepository,
+                conversationRepository = conversationRepository,
+                retryChat = retryChatUseCase,
+                idGenerator = idGenerator,
+                clock = clock,
+            )
+
+        override val revokeToolApprovalRuleUseCase: RevokeToolApprovalRuleUseCase
+            get() = RevokeToolApprovalRuleUseCaseImpl(toolApprovalRuleRepository)
+
+        override val getApprovalGatedToolsUseCase: GetApprovalGatedToolsUseCase
+            get() = GetApprovalGatedToolsUseCaseImpl(ToolSpecCatalog.Collected)
 
         override val observeAgentConfigsUseCase: ObserveAgentConfigsUseCase
             get() = ObserveAgentConfigsUseCaseImpl(agentConfigRepository)

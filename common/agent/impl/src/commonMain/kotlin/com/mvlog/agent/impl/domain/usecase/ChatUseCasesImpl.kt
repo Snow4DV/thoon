@@ -17,6 +17,10 @@ import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 import com.mvlog.agent.api.usecase.StartAgentRuntimeUseCase
 import com.mvlog.agent.impl.mapper.ChatStateApiMapper
+import com.mvlog.agent.impl.domain.approval.ToolApprovalDecisions
+import com.mvlog.agent.impl.domain.approval.ToolApprovalResolver
+import com.mvlog.agent.impl.domain.approval.isSettled
+import com.mvlog.agent.impl.domain.repository.ToolApprovalRuleRepository
 import com.mvlog.agent.impl.domain.entity.AgentRunStatus
 import com.mvlog.agent.impl.domain.entity.ChatMetadata
 import com.mvlog.agent.impl.domain.execution.AgentRunCanceller
@@ -37,6 +41,8 @@ internal class ObserveChatUseCaseImpl(
     private val chatRepository: ChatRepository,
     private val runRepository: AgentRunRepository,
     private val conversationRepository: ConversationRepository,
+    private val approvalRules: ToolApprovalRuleRepository,
+    private val approvalDecisions: ToolApprovalDecisions,
     private val mapper: ChatStateApiMapper,
 ) : ObserveChatUseCase {
 
@@ -47,8 +53,16 @@ internal class ObserveChatUseCaseImpl(
             combine(
                 chatRepository.observeEntries(chatId),
                 runRepository.observeRuns(chatId),
-            ) { entries, runs ->
-                mapper.map(chatId = chatId, entries = entries, runs = runs)
+                approvalDecisions.observe(chatId),
+                approvalRules.observeApplicable(chatId),
+            ) { entries, runs, decisions, rules ->
+                mapper.map(
+                    chatId = chatId,
+                    entries = entries,
+                    runs = runs,
+                    decisions = decisions,
+                    rules = rules,
+                )
             }
         )
     }
@@ -103,6 +117,7 @@ internal class CreateChatUseCaseImpl(
 internal class RetryChatUseCaseImpl(
     private val conversationRepository: ConversationRepository,
     private val runRepository: AgentRunRepository,
+    private val approvals: ToolApprovalResolver,
     private val idGenerator: IdGenerator,
 ) : RetryChatUseCase {
 
@@ -112,8 +127,11 @@ internal class RetryChatUseCaseImpl(
 
         val prompt = conversationRepository.unansweredPrompt(chatId)
 
-        // Blank prompt: the tool results are already in the conversation.
-        if (prompt == null && !conversationRepository.hasUnfinishedToolTurn(chatId)) return false
+        // Blank prompt: the tool results, or the decisions on the pending calls, are already there.
+        val resumable = prompt != null ||
+            conversationRepository.hasUnfinishedToolTurn(chatId) ||
+            hasDecidedToolTurn(chatId)
+        if (!resumable) return false
 
         runRepository.enqueue(
             runId = AgentRunId(idGenerator.newId()),
@@ -122,13 +140,27 @@ internal class RetryChatUseCaseImpl(
         )
         return true
     }
+
+    // Only a gated turn is resumed this way; a free turn left unanswered is a dead run, not a wait.
+    private suspend fun hasDecidedToolTurn(chatId: ChatId): Boolean {
+        val calls = conversationRepository.pendingToolCalls(chatId)
+        return calls.isNotEmpty() &&
+            approvals.isGatedTurn(calls) &&
+            approvals.verdicts(chatId, calls).values.all { it.isSettled }
+    }
 }
 
 internal class DeleteChatUseCaseImpl(
     private val metadataRepository: ChatMetadataRepository,
+    private val approvalRules: ToolApprovalRuleRepository,
+    private val approvalDecisions: ToolApprovalDecisions,
 ) : DeleteChatUseCase {
 
-    override suspend fun invoke(chatId: ChatId) = metadataRepository.delete(chatId)
+    override suspend fun invoke(chatId: ChatId) {
+        metadataRepository.delete(chatId)
+        approvalRules.deleteForChat(chatId)
+        approvalDecisions.clear(chatId)
+    }
 }
 
 private fun ChatMetadata.toSummary(isWorking: Boolean): ChatSummary = ChatSummary(

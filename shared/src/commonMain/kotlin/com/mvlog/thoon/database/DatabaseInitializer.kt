@@ -3,6 +3,7 @@ package com.mvlog.thoon.database
 import com.mvlog.agent.impl.data.room.dao.AgentConfigDao
 import com.mvlog.agent.impl.data.room.dao.AgentCheckpointDao
 import com.mvlog.agent.impl.data.room.dao.ChatDao
+import com.mvlog.agent.impl.data.room.dao.ToolApprovalRuleDao
 import com.mvlog.database.DatabaseBuilderFactory
 import com.mvlog.database.ThoonDatabaseNames
 import com.mvlog.database.applyThoonDefaults
@@ -32,6 +33,7 @@ class DatabaseInitializer : BaseInitializer(tag = TAG) {
         registry.register(ChatDao::class) { database().chatDao() }
         registry.register(AgentCheckpointDao::class) { database().agentCheckpointDao() }
         registry.register(AgentConfigDao::class) { database().agentConfigDao() }
+        registry.register(ToolApprovalRuleDao::class) { database().toolApprovalRuleDao() }
     }
 
     private companion object {

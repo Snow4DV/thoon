@@ -4,6 +4,7 @@ import com.mvlog.agent.api.di.ThoonAgentComponentHolder
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
 
@@ -23,6 +24,9 @@ internal interface ChatComponentDependencies {
 
     val retryChatUseCase: RetryChatUseCase
         get() = ThoonAgentComponentHolder.get().retryChatUseCase()
+
+    val decideToolCallUseCase: DecideToolCallUseCase
+        get() = ThoonAgentComponentHolder.get().decideToolCallUseCase()
 
     class Impl : ChatComponentDependencies
 }

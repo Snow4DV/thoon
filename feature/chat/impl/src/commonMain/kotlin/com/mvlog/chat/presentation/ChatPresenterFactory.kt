@@ -3,6 +3,7 @@ package com.mvlog.chat.presentation
 import com.mvlog.chat.api.ChatScreen
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
@@ -17,6 +18,7 @@ class ChatPresenterFactory(
     private val sendPrompt: SendPromptUseCase,
     private val cancelAgentRun: CancelAgentRunUseCase,
     private val retryChat: RetryChatUseCase,
+    private val decideToolCall: DecideToolCallUseCase,
 ) : Presenter.Factory {
 
     override fun create(
@@ -32,6 +34,7 @@ class ChatPresenterFactory(
             sendPrompt = sendPrompt,
             cancelAgentRun = cancelAgentRun,
             retryChat = retryChat,
+            decideToolCall = decideToolCall,
         )
 
         else -> null

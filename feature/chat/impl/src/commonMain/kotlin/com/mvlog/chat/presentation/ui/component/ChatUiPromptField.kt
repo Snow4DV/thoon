@@ -54,6 +54,8 @@ fun ChatUiPromptField(
     isLoading: Boolean = false,
     /** The agent is answering: the trailing button becomes stop and submit is refused. */
     isWorking: Boolean = false,
+    /** A tool call waits on the user: nothing can be sent until it is answered. */
+    isInputBlocked: Boolean = false,
     onSubmit: (String) -> Unit = {},
     onStop: () -> Unit = {},
 ) {
@@ -76,7 +78,7 @@ fun ChatUiPromptField(
     // action.
     fun submit() {
         // Refused, not queued: the draft stays in the field until the agent has stopped.
-        if (isWorking) return
+        if (isWorking || isInputBlocked) return
         val prompt = textFieldState.text.toString()
         if (prompt.isNotBlank()) {
             latestOnSubmit(prompt)
@@ -97,14 +99,19 @@ fun ChatUiPromptField(
                 .workingBorder(active = isWorking, shape = Theme[shapes][fieldShape]),
             enabled = !isLoading,
             lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5),
-            placeholder = { Text("Ask something…", color = Theme[colors][mutedColor]) },
+            placeholder = {
+                Text(
+                    text = if (isInputBlocked) "Answer the tool request first…" else "Ask something…",
+                    color = Theme[colors][mutedColor],
+                )
+            },
             backgroundColor = if (isLoading) Theme[colors][controlColor] else Theme[colors][fieldColor],
             contentColor = if (isLoading) Theme[colors][mutedColor] else Theme[colors][onFieldColor],
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             onKeyboardAction = KeyboardActionHandler { submit() },
         )
 
-        when (val action = promptFieldAction(isWorking = isWorking, canSend = canSend)) {
+        when (val action = promptFieldAction(isWorking = isWorking, canSend = canSend && !isInputBlocked)) {
             PromptFieldAction.Stop -> IconButton(onClick = onStop, style = ButtonStyle.Primary) {
                 Icon(Lucide.Square, contentDescription = "Stop")
             }

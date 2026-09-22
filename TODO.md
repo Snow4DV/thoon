@@ -139,8 +139,20 @@ by hand, so a real key can be entered without editing source. It goes into the s
 contract, so a feature that contributes a tool never compiles against the framework — the separate
 module §2.3 originally called for, rather than widening `common:agent:api`.
 
-`KoogAgentRunner` runs a real loop now: `respond → executeTools → sendToolResults → …`, ending when
-a reply carries no tool calls, bounded by a per-run budget.
+`KoogAgentRunner` runs a real loop now: `respond → executeTools → sendToolResults → …`,
+ending when a reply carries no tool calls, bounded by a per-run budget.
+
+- [x] **Tool approval** (September 2026). Every file and web tool sets `requiresApproval`; a call
+      to one ends the run with the turn committed, shows as its own item in the chat, and the user
+      allows it once, for the chat, or everywhere, or declines it. Decisions are in memory, rules in
+      `agent_tool_approval_rule`, and the run resumes straight into the tool calls once every call
+      in the turn is decided. The design is in `docs/architecture/AGENT_RUNTIME.md` (Tool approval).
+      Suspending inside the tool was rejected: it would hold the chat's worker for as long as the
+      user takes, and a killed process would lose the turn instead of re-asking
+- [ ] `requiresApprovalPerValue` is wired end to end but no parameter sets it yet; `fetch_url.url`
+      is the obvious first
+- [ ] Nothing shows in the chats list that a chat is waiting on an approval; only the chat screen
+      knows
 
 - [ ] Deleting a chat does not delete its files. The fix needs a cleanup hook on `tool-api`, because
       the alternative is `common:agent:impl` depending on a feature module
@@ -165,6 +177,9 @@ run that fails for a permanent reason (a bad API key would re-fire on each launc
       tombstones to tell "killed" from "failed" so a doomed run is not retried forever
 - [x] The `AppOnCreateAction` registered by `ThoonAgentInitializer` now runs at startup, so recovery
       fires without waiting for something to touch the holder.
+- [ ] A **free tool's call left unanswered** by a dead run is still not resumed, now on purpose: a
+      budget-exhausted turn can also end with unexecuted calls, and resuming those blindly would hand
+      the model a fresh budget every launch. Gated turns are resumed only on the user's decisions
 - [x] An **interrupted tool turn** is recovered too. The loop created a third way a conversation can
       end — a user-role message carrying `Tool.Result` parts — which `unansweredPrompt` cannot see,
       because that message has no text. Such a chat used to look finished and stall forever.

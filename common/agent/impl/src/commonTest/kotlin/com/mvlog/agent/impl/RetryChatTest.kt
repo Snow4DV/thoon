@@ -6,6 +6,10 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
 import com.mvlog.agent.api.model.AgentRunId
 import com.mvlog.agent.api.model.ChatId
+import com.mvlog.agent.api.model.ToolApprovalDecision
+import com.mvlog.agent.api.model.ToolApprovalScope
+import com.mvlog.agent.impl.domain.approval.ToolSpecCatalog
+import com.mvlog.agent.impl.fake.RecordingTool
 import com.mvlog.agent.impl.fake.TestAgentModule
 import com.mvlog.agent.impl.fake.TestJson
 import com.mvlog.agent.impl.koog.KoogMessageRowCodec
@@ -96,6 +100,33 @@ class RetryChatTest {
         )
     }
 
+    @Test
+    fun aGatedCallNobodyHasDecidedIsNotRetried() = retryTest { f ->
+        f.commitPendingCall(tool = "search")
+
+        assertTrue(
+            !f.module.retryChatUseCase(f.chatId),
+            "resuming would run the tool the user has not allowed",
+        )
+    }
+
+    @Test
+    fun aDecidedGatedTurnResumesWithABlankPrompt() = retryTest { f ->
+        f.commitPendingCall(tool = "search")
+        f.module.toolApprovalDecisions.record(f.chatId, "c1", ToolApprovalDecision.Approve(ToolApprovalScope.Once))
+
+        assertTrue(f.module.retryChatUseCase(f.chatId), "every call has an answer, so the turn can go on")
+
+        assertEquals("", f.module.agentRunRepository.nextQueuedRun(f.chatId)?.prompt)
+    }
+
+    @Test
+    fun aFreeCallLeftUnansweredIsADeadRunNotAWait() = retryTest { f ->
+        f.commitPendingCall(tool = "clock")
+
+        assertTrue(!f.module.retryChatUseCase(f.chatId), "only a turn stopped for approval is resumed this way")
+    }
+
     private class Fixture(val module: TestAgentModule, val chatId: ChatId) {
         private val historyCodec = KoogMessageRowCodec(TestJson, IdGenerator.Random)
 
@@ -105,12 +136,30 @@ class RetryChatTest {
                 messages = historyCodec.toRows(messages),
             )
         }
+
+        suspend fun commitPendingCall(tool: String) {
+            val now = Clock.System.now()
+            commitMessages(
+                listOf(
+                    Message.User(parts = listOf(MessagePart.Text("find")), metaInfo = RequestMetaInfo(now)),
+                    Message.Assistant(
+                        parts = listOf(MessagePart.Tool.Call(id = "c1", tool = tool, args = "{}")),
+                        metaInfo = ResponseMetaInfo(now),
+                    ),
+                )
+            )
+        }
     }
 
     private fun retryTest(body: suspend (Fixture) -> Unit): TestResult = runTest {
         val scope = CoroutineScope(coroutineContext + Job())
         try {
-            val module = TestAgentModule(agentScope = scope)
+            val search = RecordingTool("search", requiresApproval = true)
+            val clock = RecordingTool("clock", requiresApproval = false)
+            val module = TestAgentModule(
+                agentScope = scope,
+                toolSpecCatalog = ToolSpecCatalog { listOf(search.spec, clock.spec) },
+            )
             body(Fixture(module = module, chatId = module.createChatUseCase(null)))
         } finally {
             scope.cancel()

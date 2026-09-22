@@ -4,6 +4,13 @@ The seven tools the agent can call. The contract, the adapter and the `web_searc
 `docs/architecture/AGENT_RUNTIME.md` (Tools). This file holds the decisions specific to this module.
 Each is stated once, here, and not in code.
 
+## Six of the seven ask for approval
+
+Every file and web tool sets `requiresApproval`; `current_datetime` does not. The gate is the
+runtime's (`docs/architecture/AGENT_RUNTIME.md`, Tool approval); a tool only declares it. No
+parameter is marked `requiresApprovalPerValue` yet: an "always" rule for `fetch_url` covers every
+URL. Marking `url` would make each new address ask again while remembering the ones allowed.
+
 ## The file sandbox is `ChatFilePaths`, and only that
 
 Every file tool resolves its path through `ChatFilePaths`, which normalises before the containment

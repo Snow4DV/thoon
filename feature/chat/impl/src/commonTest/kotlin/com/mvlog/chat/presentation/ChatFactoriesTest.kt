@@ -7,6 +7,7 @@ import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.api.model.ChatState
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
@@ -70,6 +71,7 @@ class ChatFactoriesTest {
             sendPrompt = SendPromptUseCase { _, _ -> AgentRunId("run") },
             cancelAgentRun = CancelAgentRunUseCase { },
             retryChat = RetryChatUseCase { false },
+            decideToolCall = DecideToolCallUseCase { _, _, _ -> },
         ).create(
             screen = ChatScreen(chatId = ChatId("existing")),
             navigator = Navigator.NoOp,
@@ -86,6 +88,7 @@ class ChatFactoriesTest {
         sendPrompt = SendPromptUseCase { _, _ -> AgentRunId("run") },
         cancelAgentRun = CancelAgentRunUseCase { },
         retryChat = RetryChatUseCase { false },
+        decideToolCall = DecideToolCallUseCase { _, _, _ -> },
     )
 
     private fun emptyChatState(chatId: ChatId) = ChatState(

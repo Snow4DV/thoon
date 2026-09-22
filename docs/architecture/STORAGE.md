@@ -1,6 +1,6 @@
 # Storage
 
-**One Room database for the whole app** (`ThoonDatabase` in `:shared`, currently `VERSION = 2`).
+**One Room database for the whole app** (`ThoonDatabase` in `:shared`, currently `VERSION = 3`).
 
 The dependency runs the wrong way on purpose: the database must see every module's entities, so it
 lives downstream, and DAOs travel back up through `DaoFactory`:
@@ -36,6 +36,15 @@ by side, and only one of them should ever be searched.
   serialiser rather than a hand-written mapping.
 - `message.createdAt` is **commit time**, stamped once per batch — not the message's own timestamp.
   Never order by it. Order by `coalesce(chat.lastMessageAt, chat.createdAt)`.
+
+### Tool approval rules
+
+`agent_tool_approval_rule` holds the "always allow" rules: `toolName`, a nullable `chatId` (null is
+global), `parametersJson` (a string map; empty means the rule covers every call of the tool) and
+`createdAt`. No foreign key to `agent_chat`, like checkpoints; `DeleteChatUseCase` removes a chat's
+rules by hand. Parameter matching happens in Kotlin, not SQL. An unreadable `parametersJson` drops
+the row rather than widening it. Decisions on individual calls are not stored at all — see the
+runtime doc.
 
 ### The anchor invariant
 

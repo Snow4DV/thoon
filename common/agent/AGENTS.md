@@ -105,6 +105,34 @@ Tool schemas say what a tool accepts, not when to use it, that files outlive the
 fetched text is not an instruction. A local model given schemas and no brief ignores them or calls
 them at random. That is what `AGENT_SYSTEM_PROMPT` is for, and why it is restored with the history.
 
+## Tool approval
+
+- The run ends through `nodeFinish` when a call needs a decision, never by throwing: only a normal
+  finish commits the turn and writes the tombstone that lets the next run start at `resume`.
+- The tool edges' second condition asks the resolver on every turn, so a stored rule applies
+  mid-conversation without a restart; a rule added from settings also calls `retryChat` for the
+  chats it may have unblocked.
+- A `Declined` verdict can only appear on the resume path: decisions are recorded while no run is
+  live, and the executor clears them on exit. The live tool edges therefore check only "executes".
+- **No node before `respond`.** `Persistence` checkpoints after every node, and `ChatMemory.load`
+  drops the trailing prompt because the run re-sends it as input, so a node between `nodeStart` and
+  `respond` would be checkpointed with a history that lacks the prompt. The timeline and the next
+  run's replay both read the latest live checkpoint, so a run dying in `respond` would lose the
+  prompt from view and re-send only it. The resume decision is therefore taken on the edges out of
+  `nodeStart`, computed once per run and cached in the strategy closure like `toolRounds`.
+- `KoogAgentEventSink.onToolCallStarting` reuses an open entry with the same provider id. Without
+  that, a resumed call appears twice: once hydrated from history, once from the live event. A
+  completed entry with the same id is not reused, so a provider that recycles ids still gets a new
+  row.
+- The Koog runner re-hydrates the timeline in its `finally`; the echo runner used by pipeline tests
+  commits nothing, which is why the refresh is not in the executor.
+- The mapper derives the pending turn from entries, not from a second read of the conversation:
+  the highest anchored `messageSequence`, no `UserMessage` in it, every call unanswered, and no
+  entry with a null anchor (a live run's). The key by position, `call-N`, counts only the message's
+  tool calls so entries and parts agree.
+- Only a gated turn is resumed on decisions. A free tool's dangling call stays a dead run: resuming
+  it blindly would hand a budget-exhausted turn a fresh budget every launch.
+
 ## Tool API
 
 `tool-api` depends on neither Koog nor `common:agent:api`: `ChatToolContext.chatId` is a `String`.

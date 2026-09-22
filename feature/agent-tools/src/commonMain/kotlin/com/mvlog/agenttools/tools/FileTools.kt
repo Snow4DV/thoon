@@ -12,6 +12,7 @@ internal class ListFilesTool(private val store: ChatFileStore) : ThoonAgentTool 
     override val spec = AgentToolSpec(
         name = "list_files",
         description = "List the files stored for this conversation, with their sizes in bytes.",
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String {
@@ -33,6 +34,7 @@ internal class ReadFileTool(private val store: ChatFileStore) : ThoonAgentTool {
                 description = "Path relative to this conversation's folder, e.g. 'notes.md'.",
             ),
         ),
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String =
@@ -56,6 +58,7 @@ internal class WriteFileTool(private val store: ChatFileStore) : ThoonAgentTool 
                 description = "The file's complete new contents.",
             ),
         ),
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String {
@@ -87,6 +90,7 @@ internal class EditFileTool(private val store: ChatFileStore) : ThoonAgentTool {
                 description = "The text to put in its place.",
             ),
         ),
+        requiresApproval = true,
     )
 
     override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String {

@@ -9,6 +9,7 @@ import com.mvlog.agent.impl.domain.repository.ConversationRepository
 import com.mvlog.log.TLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -77,8 +78,7 @@ internal class AgentRunCoordinator(
     override suspend fun cancelRunning(runId: AgentRunId): Boolean {
         val job = guard.withLock { activeRuns[runId] } ?: return false
         TLogger.d(TAG, "Cancelling run ${runId.value}")
-        job.cancel()
-        job.join()
+        job.cancelAndJoin()
         return true
     }
 

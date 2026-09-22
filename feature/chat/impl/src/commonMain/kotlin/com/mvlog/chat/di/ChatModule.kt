@@ -20,6 +20,7 @@ internal interface ChatModule {
                     sendPrompt = sendPromptUseCase,
                     cancelAgentRun = cancelAgentRunUseCase,
                     retryChat = retryChatUseCase,
+                    decideToolCall = decideToolCallUseCase,
                 ),
                 uiFactory = ChatUiFactory(),
             )

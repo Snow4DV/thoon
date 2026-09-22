@@ -2,6 +2,9 @@ package com.mvlog.agentconfig.presentation.chat.circuit
 
 import com.mvlog.agent.api.model.AgentConfig
 import com.mvlog.agent.api.model.AgentConfigId
+import com.mvlog.agent.api.model.ToolApprovalRule
+import com.mvlog.agent.api.model.ToolApprovalRuleId
+import com.mvlog.agentconfig.presentation.common.settings.toolApprovalItems
 import com.mvlog.agentconfig.presentation.common.settings.describe
 import com.mvlog.agentconfig.presentation.common.settings.ui.SettingItem
 import kotlinx.collections.immutable.PersistentList
@@ -14,6 +17,10 @@ internal fun chatConfigurationItems(
     defaultName: String?,
     onSelect: (AgentConfigId?) -> Unit,
     onManageModels: () -> Unit,
+    gatedTools: List<String> = emptyList(),
+    approvalRules: List<ToolApprovalRule> = emptyList(),
+    onAllowTool: (String) -> Unit = {},
+    onRevokeRule: (ToolApprovalRuleId) -> Unit = {},
 ): PersistentList<SettingItem> = buildList {
     add(
         SettingItem.Choice(
@@ -35,6 +42,16 @@ internal fun chatConfigurationItems(
         )
     }
 
-    // Last on purpose: an empty registry must not be a dead end.
+    // Last of the model rows on purpose: an empty registry must not be a dead end.
     add(SettingItem.Navigation(title = "Manage models…", onClick = onManageModels))
+
+    addAll(
+        toolApprovalItems(
+            gatedTools = gatedTools,
+            rules = approvalRules,
+            scopeSubtitle = "In this chat",
+            onAllow = onAllowTool,
+            onRevoke = onRevokeRule,
+        ),
+    )
 }.toPersistentList()

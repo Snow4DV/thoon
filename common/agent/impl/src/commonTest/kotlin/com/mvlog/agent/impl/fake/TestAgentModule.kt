@@ -1,7 +1,12 @@
 package com.mvlog.agent.impl.fake
 
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
+import com.mvlog.agent.api.usecase.AddToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CancelChatRunUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
+import com.mvlog.agent.api.usecase.GetApprovalGatedToolsUseCase
+import com.mvlog.agent.api.usecase.ObserveToolApprovalRulesUseCase
+import com.mvlog.agent.api.usecase.RevokeToolApprovalRuleUseCase
 import com.mvlog.agent.api.usecase.CreateAgentConfigUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
@@ -23,6 +28,16 @@ import com.mvlog.agent.impl.mapper.ChatStateApiMapper
 import com.mvlog.agent.impl.fake.memory.InMemoryAgentConfigRepository
 import com.mvlog.agent.impl.fake.memory.InMemoryChatMetadataRepository
 import com.mvlog.agent.impl.fake.memory.InMemoryCheckpointRepository
+import com.mvlog.agent.impl.fake.memory.InMemoryToolApprovalRuleRepository
+import com.mvlog.agent.impl.domain.approval.ToolApprovalDecisions
+import com.mvlog.agent.impl.domain.approval.ToolApprovalResolver
+import com.mvlog.agent.impl.domain.approval.ToolSpecCatalog
+import com.mvlog.agent.impl.domain.repository.ToolApprovalRuleRepository
+import com.mvlog.agent.impl.domain.usecase.AddToolApprovalRuleUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.DecideToolCallUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.GetApprovalGatedToolsUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.ObserveToolApprovalRulesUseCaseImpl
+import com.mvlog.agent.impl.domain.usecase.RevokeToolApprovalRuleUseCaseImpl
 import com.mvlog.agent.impl.data.memory.InMemoryAgentRunRepository
 import com.mvlog.agent.impl.data.memory.InMemoryAgentStore
 import com.mvlog.agent.impl.fake.memory.InMemoryChatHistoryRepository
@@ -80,6 +95,8 @@ internal class TestAgentModule(
     private val clock: AgentClock = AgentClock.System,
     private val idGenerator: IdGenerator = IdGenerator.Random,
     private val echoRuns: Boolean = false,
+    /** Defaults to the collector, so a test registers a provider the way the app does. */
+    private val toolSpecCatalog: ToolSpecCatalog = ToolSpecCatalog.Collected,
 ) : ThoonAgentModule {
 
     /** Mirrors the shared instance from `common:serialization`. */
@@ -127,16 +144,30 @@ internal class TestAgentModule(
     override val agentConfigRepository: AgentConfigRepository =
         InMemoryAgentConfigRepository()
 
+    override val toolApprovalRuleRepository: ToolApprovalRuleRepository =
+        InMemoryToolApprovalRuleRepository()
+
+    override val toolApprovalDecisions: ToolApprovalDecisions = ToolApprovalDecisions()
+
+    override val toolApprovalResolver: ToolApprovalResolver
+        get() = ToolApprovalResolver(
+            catalog = toolSpecCatalog,
+            rules = toolApprovalRuleRepository,
+            decisions = toolApprovalDecisions,
+        )
+
     override val agentRunnerFactory: AgentRunnerFactory =
         if (echoRuns) {
             EchoAgentRunnerFactory(chatRepository)
         } else {
             DefaultAgentRunnerFactory(
                 chatRepository = chatRepository,
+                conversationRepository = conversationRepository,
                 historyProvider = chatHistoryProvider,
                 persistenceStorage = persistenceStorageProvider,
                 clientFactory = KoogClientFactory(HttpClient()),
                 toolRegistryFactory = KoogToolRegistryFactory(),
+                approvals = toolApprovalResolver,
                 clock = clock,
             )
         }
@@ -150,6 +181,7 @@ internal class TestAgentModule(
             runRepository = agentRunRepository,
             chatRepository = chatRepository,
             mutexes = chatRunMutexRegistry,
+            approvalDecisions = toolApprovalDecisions,
         )
 
     override val runCoordinator: AgentRunCoordinator = AgentRunCoordinator(
@@ -174,7 +206,9 @@ internal class TestAgentModule(
             chatRepository = chatRepository,
             runRepository = agentRunRepository,
             conversationRepository = conversationRepository,
-            mapper = ChatStateApiMapper(),
+            approvalRules = toolApprovalRuleRepository,
+            approvalDecisions = toolApprovalDecisions,
+            mapper = ChatStateApiMapper(toolApprovalResolver),
         )
 
     override val searchChatsUseCase: SearchChatsUseCase
@@ -190,11 +224,45 @@ internal class TestAgentModule(
         get() = RetryChatUseCaseImpl(
             conversationRepository = conversationRepository,
             runRepository = agentRunRepository,
+            approvals = toolApprovalResolver,
             idGenerator = idGenerator,
         )
 
     override val deleteChatUseCase: DeleteChatUseCase
-        get() = DeleteChatUseCaseImpl(chatMetadataRepository)
+        get() = DeleteChatUseCaseImpl(
+            metadataRepository = chatMetadataRepository,
+            approvalRules = toolApprovalRuleRepository,
+            approvalDecisions = toolApprovalDecisions,
+        )
+
+    override val decideToolCallUseCase: DecideToolCallUseCase
+        get() = DecideToolCallUseCaseImpl(
+            conversationRepository = conversationRepository,
+            rules = toolApprovalRuleRepository,
+            decisions = toolApprovalDecisions,
+            approvals = toolApprovalResolver,
+            retryChat = retryChatUseCase,
+            idGenerator = idGenerator,
+            clock = clock,
+        )
+
+    override val observeToolApprovalRulesUseCase: ObserveToolApprovalRulesUseCase
+        get() = ObserveToolApprovalRulesUseCaseImpl(toolApprovalRuleRepository)
+
+    override val addToolApprovalRuleUseCase: AddToolApprovalRuleUseCase
+        get() = AddToolApprovalRuleUseCaseImpl(
+            rules = toolApprovalRuleRepository,
+            conversationRepository = conversationRepository,
+            retryChat = retryChatUseCase,
+            idGenerator = idGenerator,
+            clock = clock,
+        )
+
+    override val revokeToolApprovalRuleUseCase: RevokeToolApprovalRuleUseCase
+        get() = RevokeToolApprovalRuleUseCaseImpl(toolApprovalRuleRepository)
+
+    override val getApprovalGatedToolsUseCase: GetApprovalGatedToolsUseCase
+        get() = GetApprovalGatedToolsUseCaseImpl(toolSpecCatalog)
 
     override val sendPromptUseCase: SendPromptUseCase
         get() = SendPromptUseCaseImpl(

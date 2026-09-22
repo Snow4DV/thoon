@@ -1,6 +1,7 @@
 package com.mvlog.agent.impl.execution
 
 import com.mvlog.agent.impl.domain.entity.AgentRun
+import com.mvlog.agent.impl.domain.approval.ToolApprovalDecisions
 import com.mvlog.agent.impl.domain.entity.AgentRunStatus
 import com.mvlog.agent.impl.domain.repository.AgentRunRepository
 import com.mvlog.agent.impl.domain.repository.ChatRepository
@@ -20,10 +21,16 @@ internal class AgentRunExecutor(
     private val runRepository: AgentRunRepository,
     private val chatRepository: ChatRepository,
     private val mutexes: ChatRunMutexRegistry,
+    private val approvalDecisions: ToolApprovalDecisions,
 ) {
 
     suspend fun execute(run: AgentRun) {
-        mutexes.withChatLock(run.chatId) { executeLocked(run) }
+        try {
+            mutexes.withChatLock(run.chatId) { executeLocked(run) }
+        } finally {
+            // Consumed or abandoned with the run; a stale approval must not outlive it.
+            approvalDecisions.clear(run.chatId)
+        }
     }
 
     private suspend fun executeLocked(run: AgentRun) {

@@ -1,6 +1,7 @@
 package com.mvlog.agent.impl.domain.repository
 
 import com.mvlog.agent.api.model.ChatId
+import com.mvlog.agent.impl.domain.approval.PendingToolCall
 import com.mvlog.agent.impl.domain.entity.ChatEntry
 
 internal interface ConversationRepository {
@@ -16,6 +17,9 @@ internal interface ConversationRepository {
     suspend fun unansweredPrompt(chatId: ChatId): String?
 
     suspend fun hasUnfinishedToolTurn(chatId: ChatId): Boolean
+
+    /** The last turn's tool calls when it is an assistant turn nothing has answered; else empty. */
+    suspend fun pendingToolCalls(chatId: ChatId): List<PendingToolCall>
 
     suspend fun chatsWithUnansweredPrompts(): List<ChatId>
 }

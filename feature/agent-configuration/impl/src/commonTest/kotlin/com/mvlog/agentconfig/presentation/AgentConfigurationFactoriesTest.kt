@@ -66,6 +66,10 @@ class AgentConfigurationFactoriesTest {
         setDefaultConfig = { AgentConfigResult.Success(Unit) },
         observeChatConfigOverride = { flowOf(null) },
         setChatConfig = { _, _ -> AgentConfigResult.Success(Unit) },
+        observeToolApprovalRules = { flowOf(emptyList()) },
+        addToolApprovalRule = { _, _ -> },
+        revokeToolApprovalRule = { },
+        getApprovalGatedTools = { emptyList() },
         localEngineProvider = { emptyList() },
     )
 }

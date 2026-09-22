@@ -21,7 +21,6 @@ internal class KoogToolRegistryFactory {
     fun create(chatId: String): ToolRegistry {
         val context = ChatToolContext(chatId)
         val tools = AgentToolsCollector.collected().flatMap { provider ->
-            // One misbehaving provider should cost its own tools, not every other feature's.
             runCatching { provider.tools() }
                 .onFailure { TLogger.e(TAG, "A tool provider failed to build its tools", it) }
                 .getOrDefault(emptyList())

@@ -32,12 +32,22 @@ the one place a settings screen accumulates them.
 The root row for it navigates straight to `AgentConfigListScreen`. The `ModelAndProvider` branch in
 `configurationSectionItems` is reached only through a restored back stack; it shows a single link.
 
-## Three sections are placeholders on purpose
+## Two sections are placeholders on purpose
 
-Agent, Tools and Advanced render a `SettingItem.Placeholder` whose text says *why* they are empty:
-`agent_settings` holds only `defaultConfigId`, so an edited system prompt or a switched-off tool has
-nowhere to live. Fix storage first. Do not invent settings that cannot persist, and do not delete the
-placeholders — a section that renders nothing reads as a failed load, not an unfinished feature.
+Agent and Advanced render a `SettingItem.Placeholder` whose text says *why* they are empty:
+`agent_settings` holds only `defaultConfigId`, so an edited system prompt has nowhere to live. Fix
+storage first. Do not invent settings that cannot persist, and do not delete the placeholders — a
+section that renders nothing reads as a failed load, not an unfinished feature.
+
+## Tool approvals are toggles over rules
+
+Tools shows the global "always allow" rules and Chat settings the chat's own, both through
+`toolApprovalItems`: one `Toggle` per gated tool for its blanket rule, then one per value-bound rule,
+which only switches off because such a rule is made from a call's arguments, never from settings.
+The rows write through `AddToolApprovalRuleUseCase` and `RevokeToolApprovalRuleUseCase` and read
+`ObserveToolApprovalRulesUseCase` scoped exactly (null is global), so a chat rule never shows under
+Tools and a global one never looks chat-specific. Switching a tool *off* is still unsupported; the
+Tools placeholder that remains when no tool is gated says so.
 
 ## The list opens the editor, and only the editor
 

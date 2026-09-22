@@ -4,6 +4,8 @@ internal sealed interface ToolCallStatus {
 
     data object Pending : ToolCallStatus
 
+    data object AwaitingApproval : ToolCallStatus
+
     data object Running : ToolCallStatus
 
     data class Completed(val result: String) : ToolCallStatus

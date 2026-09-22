@@ -41,13 +41,15 @@ internal class KoogAgentEventSink(
     suspend fun onToolCallStarting(toolCallId: String?, name: String, arguments: String?) {
         // Flush first so the tool call lands after the text that introduced it.
         flushAll()
-        val entryId = chatRepository.addToolCall(
-            chatId = context.chatId,
-            runId = context.runId,
-            toolCallId = toolCallId,
-            name = name,
-            arguments = arguments,
-        )
+        // A call hydrated from a turn that stopped for approval already has its entry.
+        val entryId = toolCallId?.let { chatRepository.findOpenToolCallEntryId(context.chatId, it) }
+            ?: chatRepository.addToolCall(
+                chatId = context.chatId,
+                runId = context.runId,
+                toolCallId = toolCallId,
+                name = name,
+                arguments = arguments,
+            )
         chatRepository.updateToolCallStatus(entryId, ToolCallStatus.Running)
     }
 

@@ -3,6 +3,7 @@ package com.mvlog.thoon.database
 import com.mvlog.agent.impl.data.room.dao.AgentConfigDao
 import com.mvlog.agent.impl.data.room.dao.AgentCheckpointDao
 import com.mvlog.agent.impl.data.room.dao.ChatDao
+import com.mvlog.agent.impl.data.room.dao.ToolApprovalRuleDao
 import com.mvlog.database.dao.DaoRegistry
 import com.mvlog.database.dao.ThoonDao
 import kotlin.reflect.KClass
@@ -38,6 +39,7 @@ class DatabaseRegistrationTest {
             ChatDao::class,
             AgentCheckpointDao::class,
             AgentConfigDao::class,
+            ToolApprovalRuleDao::class,
         )
     }
 }

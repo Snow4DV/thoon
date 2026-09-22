@@ -16,6 +16,7 @@ import com.mvlog.agent.api.model.ChatItem
 import com.mvlog.agent.api.model.ChatState
 import com.mvlog.agent.api.usecase.CancelAgentRunUseCase
 import com.mvlog.agent.api.usecase.CreateChatUseCase
+import com.mvlog.agent.api.usecase.DecideToolCallUseCase
 import com.mvlog.agent.api.usecase.ObserveChatUseCase
 import com.mvlog.agent.api.usecase.RetryChatUseCase
 import com.mvlog.agent.api.usecase.SendPromptUseCase
@@ -35,6 +36,7 @@ class ChatPresenter(
     private val sendPrompt: SendPromptUseCase,
     private val cancelAgentRun: CancelAgentRunUseCase,
     private val retryChat: RetryChatUseCase,
+    private val decideToolCall: DecideToolCallUseCase,
     private val chatTitle: String = DEFAULT_TITLE,
 ) : Presenter<ChatUiState> {
 
@@ -67,17 +69,25 @@ class ChatPresenter(
             failure = (chatState?.execution as? ChatExecutionState.Failed)?.message
         }
 
-        val eventSink: (ChatUiEvent) -> Unit = { event ->
+        fun handleEvent(event: ChatUiEvent) {
             when (event) {
                 is ChatUiEvent.Ui.PromptChanged -> prompt = event.prompt
 
                 is ChatUiEvent.Ui.PromptSubmitted -> {
                     val id = chatId
-                    // Not while a run is live: the field shows stop, and the draft must survive.
-                    if (id != null && event.prompt.isNotBlank() && chatState?.isWorking != true) {
+                    val current = chatState
+                    // Not while a run is live or a tool call waits on the user: the field shows
+                    // stop or is blocked, and the draft must survive.
+                    val accepting = current?.isWorking != true &&
+                        current?.execution !is ChatExecutionState.AwaitingApproval
+                    if (id != null && event.prompt.isNotBlank() && accepting) {
                         prompt = ""
                         scope.launch { sendPrompt(chatId = id, text = event.prompt) }
                     }
+                }
+
+                is ChatUiEvent.Ui.ToolCallDecided -> chatId?.let { id ->
+                    scope.launch { decideToolCall(id, event.toolCallKey, event.decision) }
                 }
 
                 is ChatUiEvent.Ui.CancelGenerationClicked -> {
@@ -117,6 +127,8 @@ class ChatPresenter(
             }
         }
 
+        val eventSink: (ChatUiEvent) -> Unit = { handleEvent(it) }
+
         val currentFailure = failure
         val currentState = chatState
 
@@ -143,6 +155,7 @@ class ChatPresenter(
                 isDeepLinked = screen.highlightMessageSequence != null,
                 prompt = prompt,
                 isThinking = currentState.isWorking,
+                isAwaitingApproval = currentState.execution is ChatExecutionState.AwaitingApproval,
                 isRefreshing = false,
                 isChatOptionsMenuVisible = isChatOptionsMenuVisible,
                 chatTitle = chatTitle,

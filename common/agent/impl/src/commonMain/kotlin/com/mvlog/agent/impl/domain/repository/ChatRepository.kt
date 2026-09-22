@@ -45,6 +45,9 @@ internal interface ChatRepository {
 
     suspend fun findToolCallEntryId(chatId: ChatId, toolCallId: String): String?
 
+    /** Like [findToolCallEntryId], but only a call that has not completed or failed. */
+    suspend fun findOpenToolCallEntryId(chatId: ChatId, toolCallId: String): String?
+
     /** Called however a run ends, so a failed or killed run never leaves a spinner. */
     suspend fun settleStreamingEntries(runId: AgentRunId)
 }

@@ -1,5 +1,6 @@
 package com.mvlog.chat.presentation.item
 
+import com.mvlog.agent.api.model.ToolApprovalDecision
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Instant
@@ -49,8 +50,18 @@ sealed interface ChatItem {
 
         sealed interface Status {
             data object Loading : Status
+            data object AwaitingApproval : Status
             data class Success(val result: String) : Status
             data class Failure(val errorMessage: String) : Status
         }
     }
+
+    data class ToolApproval(
+        override val id: String,
+        val createdAt: Instant,
+        val toolCallKey: String,
+        val toolName: String,
+        val action: String,
+        val decision: ToolApprovalDecision?,
+    ) : ChatItem
 }
