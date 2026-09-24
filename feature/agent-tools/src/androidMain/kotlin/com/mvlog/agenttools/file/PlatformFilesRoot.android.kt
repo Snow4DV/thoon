@@ -1,6 +1,7 @@
 package com.mvlog.agenttools.file
 
 import android.content.Context
+import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -20,3 +21,5 @@ object AndroidFilesContext {
 
 internal actual fun platformFilesRoot(): Path =
     AndroidFilesContext.require().filesDir.absolutePath.toPath()
+
+internal actual fun platformFileSystem(): FileSystem = FileSystem.SYSTEM

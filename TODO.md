@@ -350,10 +350,11 @@ gone, along with `Greeting`, `GreetingUtil` and the `Platform` expect/actual tha
 
 ---
 
-## 5a. A web target would need a second file store
+## 5a. The web target needs a second file store
 
-Not blocking anything — there is no web target today (`android`, `iosArm64`, `iosSimulatorArm64`
-only) — but recorded so the choice is not re-derived. okio publishes `wasmJs` artifacts, yet:
+Every module now also builds for `wasmJs` (`:webApp` is the entry point). The file tools run there
+over an in-memory okio `FakeFileSystem`, so a browser reload loses every chat's files. A real store
+is still the fix, and okio cannot be it — okio publishes `wasmJs` artifacts, yet:
 
 - `FileSystem.SYSTEM` does not exist there; okio's wasm companion declares only
   `SYSTEM_TEMPORARY_DIRECTORY`, because a browser has no system filesystem.
@@ -367,6 +368,7 @@ writes one more implementation of a four-method interface. The sandbox check liv
 okio's `Path`, which *is* available on wasmJs, so the security-critical part is inherited rather
 than rewritten.
 
+- [ ] Write the OPFS-backed `ChatFileStore` for web, replacing the in-memory `FakeFileSystem`
 - [ ] The network tools cannot work in a browser at all — CORS blocks both `fetch_url` and
       `web_search` against third-party origins
 

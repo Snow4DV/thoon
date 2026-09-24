@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
@@ -44,6 +46,11 @@ kotlin {
         }
     }
 
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -54,7 +61,6 @@ kotlin {
                 api(libs.room.runtime)
                 api(project(":common:di"))
 
-                implementation(libs.sqlite.bundled)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.atomicfu)
             }
@@ -68,7 +74,7 @@ kotlin {
 
         androidMain {
             dependencies {
-                // Add Android-specific dependencies here.
+                implementation(libs.sqlite.bundled)
             }
         }
 
@@ -82,7 +88,15 @@ kotlin {
 
         iosMain {
             dependencies {
-                // Add iOS-specific dependencies here.
+                implementation(libs.sqlite.bundled)
+            }
+        }
+
+        wasmJsMain {
+            dependencies {
+                implementation(libs.sqlite.web)
+                implementation(libs.kotlinx.browser)
+                implementation(npm("thoon-sqlite-worker", layout.projectDirectory.dir("worker").asFile))
             }
         }
     }

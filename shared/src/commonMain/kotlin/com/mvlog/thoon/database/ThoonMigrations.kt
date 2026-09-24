@@ -1,6 +1,6 @@
 package com.mvlog.thoon.database
 
-import androidx.room.migration.Migration
+import androidx.room3.migration.Migration
 
 object ThoonMigrations {
 

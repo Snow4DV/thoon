@@ -1,9 +1,9 @@
 package com.mvlog.thoon.database
 
-import androidx.room.ConstructedBy
-import androidx.room.Database
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
+import androidx.room3.ConstructedBy
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
 import com.mvlog.agent.impl.data.room.dao.AgentConfigDao
 import com.mvlog.agent.impl.data.room.dao.AgentCheckpointDao
 import com.mvlog.agent.impl.data.room.dao.ChatDao

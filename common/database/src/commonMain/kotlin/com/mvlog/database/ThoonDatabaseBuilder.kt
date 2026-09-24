@@ -1,8 +1,8 @@
 package com.mvlog.database
 
-import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteDriver
 import kotlin.coroutines.CoroutineContext
 
 expect class DatabaseBuilderFactory {
@@ -12,10 +12,12 @@ expect class DatabaseBuilderFactory {
 
 expect val databaseDispatcher: CoroutineContext
 
+internal expect fun platformSQLiteDriver(): SQLiteDriver
+
 fun <T : RoomDatabase> RoomDatabase.Builder<T>.applyThoonDefaults(
     migrations: List<Migration> = emptyList(),
 ): RoomDatabase.Builder<T> = this
-    .setDriver(BundledSQLiteDriver())
+    .setDriver(platformSQLiteDriver())
     .setQueryCoroutineContext(databaseDispatcher)
     .apply { if (migrations.isNotEmpty()) addMigrations(*migrations.toTypedArray()) }
 

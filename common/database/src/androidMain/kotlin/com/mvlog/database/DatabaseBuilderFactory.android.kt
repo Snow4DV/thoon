@@ -1,7 +1,9 @@
 package com.mvlog.database
 
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlin.coroutines.CoroutineContext
 
@@ -22,3 +24,5 @@ actual class DatabaseBuilderFactory {
 }
 
 actual val databaseDispatcher: CoroutineContext = Dispatchers.IO
+
+internal actual fun platformSQLiteDriver(): SQLiteDriver = BundledSQLiteDriver()

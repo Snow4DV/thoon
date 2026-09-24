@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
@@ -47,6 +49,11 @@ kotlin {
         }
     }
 
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
     // Source set declarations.
     // Declaring a target automatically creates a source set with the same name. By default, the
     // Kotlin Gradle Plugin creates additional source sets that depend on each other, since it is
@@ -83,6 +90,12 @@ kotlin {
                 implementation(libs.androidx.core)
                 implementation(libs.androidx.runner)
                 implementation(libs.androidx.testExt.junit)
+            }
+        }
+
+        wasmJsMain {
+            dependencies {
+                implementation(libs.ktor.client.js)
             }
         }
 

@@ -1,6 +1,6 @@
 package com.mvlog.agent.impl.data.room.dao
 
-import androidx.room.Embedded
+import androidx.room3.Embedded
 import com.mvlog.agent.impl.data.room.entity.ChatEntity
 
 /** matchedText is the whole part; the snippet is cut in Kotlin because it needs the query. */

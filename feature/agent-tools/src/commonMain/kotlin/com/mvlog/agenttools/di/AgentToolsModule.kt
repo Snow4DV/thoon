@@ -3,6 +3,7 @@ package com.mvlog.agenttools.di
 import com.mvlog.agent.tool.AgentToolProvider
 import com.mvlog.agenttools.file.ChatFileStore
 import com.mvlog.agenttools.file.OkioChatFileStore
+import com.mvlog.agenttools.file.platformFileSystem
 import com.mvlog.agenttools.file.platformFilesRoot
 import com.mvlog.agenttools.tools.EditFileTool
 import com.mvlog.agenttools.tools.ListFilesTool
@@ -11,7 +12,6 @@ import com.mvlog.agenttools.tools.WriteFileTool
 import com.mvlog.agenttools.time.CurrentDateTimeTool
 import com.mvlog.agenttools.web.FetchUrlTool
 import com.mvlog.agenttools.web.WebSearchTool
-import okio.FileSystem
 
 internal interface AgentToolsModule {
 
@@ -24,7 +24,7 @@ internal interface AgentToolsModule {
         /** `by lazy`: resolve the platform files root once, not per tool call. */
         private val fileStore: ChatFileStore by lazy {
             OkioChatFileStore(
-                fileSystem = FileSystem.SYSTEM,
+                fileSystem = platformFileSystem(),
                 root = platformFilesRoot(),
                 dispatchers = dispatchers,
             )

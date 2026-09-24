@@ -1,6 +1,7 @@
 package com.mvlog.agenttools.file
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 import platform.Foundation.NSDocumentDirectory
@@ -21,3 +22,5 @@ internal actual fun platformFilesRoot(): Path {
 
     return requireNotNull(url.path) { "Documents directory URL has no path" }.toPath()
 }
+
+internal actual fun platformFileSystem(): FileSystem = FileSystem.SYSTEM

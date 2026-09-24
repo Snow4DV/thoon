@@ -1,7 +1,9 @@
 package com.mvlog.database
 
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import platform.Foundation.NSDocumentDirectory
@@ -42,3 +44,5 @@ actual class DatabaseBuilderFactory {
 // Default is enough: Room serialises writes and the bundled driver locks; queries only need to
 // stay off main.
 actual val databaseDispatcher: CoroutineContext = Dispatchers.Default
+
+internal actual fun platformSQLiteDriver(): SQLiteDriver = BundledSQLiteDriver()

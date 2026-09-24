@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -11,7 +12,7 @@ plugins {
 
 // The app keeps every feature's tables in one database, so this module owns the single `@Database`
 // and is therefore the only place Room's processor runs.
-room {
+room3 {
     schemaDirectory("$projectDir/schemas")
 }
 
@@ -51,6 +52,11 @@ kotlin {
        }.configure {
            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
        }
+    }
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
     }
     
     sourceSets {
@@ -102,6 +108,7 @@ dependencies {
         "kspAndroid",
         "kspIosArm64",
         "kspIosSimulatorArm64",
+        "kspWasmJs",
     ).forEach { configuration ->
         add(configuration, libs.room.compiler)
     }

@@ -20,6 +20,7 @@ turn, which is recovered on next launch.
 ./gradlew :androidApp:assembleDebug          # Android app
 ./gradlew testAndroidHostTest                # every module's host tests (196 today)
 ./gradlew compileKotlinIosSimulatorArm64 compileKotlinIosArm64   # iOS must keep compiling
+./gradlew :webApp:wasmJsBrowserDistribution  # web (wasmJs) must keep building
 ```
 
 Run all of these before calling anything done. **iOS is a real target, not aspirational** —
@@ -61,6 +62,7 @@ cheapest way to find out.
 ```
 androidApp/            Android entry point (MainActivity)
 iosApp/                Xcode project
+webApp/                wasmJs entry point (ComposeViewport)
 shared/                composition root: App.kt, ThoonDatabase, FeatureRegistry, startup
 common/
   agent/api            use cases + models the app talks to (no Koog types)

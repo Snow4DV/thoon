@@ -32,9 +32,11 @@ hrmMarkdown = "1.5.3"
 composeShimmer = "1.5.0"
 koog = "1.2.0"
 ksp = "2.3.12"
-room = "2.8.4"
-sqlite = "2.7.0"
+room = "3.0.3"
+runtime = "1.12.1"
+sqlite = "2.7.1"
 ktor = "3.6.0"
+kotlinxBrowser = "0.5.0"
 okio = "3.16.2"
 
 [libraries]
@@ -94,6 +96,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 # Filesystem
@@ -101,9 +104,11 @@ okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
 # Persistence
-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+sqlite-web = { module = "androidx.sqlite:sqlite-web", version.ref = "sqlite" }
+kotlinx-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinxBrowser" }
 
 
 [plugins]
@@ -116,5 +121,5 @@ jetbrainsKotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrains
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 androidLint = { id = "com.android.lint", version.ref = "agp" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-room = { id = "androidx.room", version.ref = "room" }
+room = { id = "androidx.room3", version.ref = "room" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
