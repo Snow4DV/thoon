@@ -1,5 +1,6 @@
 package com.mvlog.thoon
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -7,6 +8,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.composables.ui.theme.backgroundColor
+import com.composables.ui.theme.colors
+import com.composeunstyled.theme.Theme
 import com.mvlog.chatslist.api.ChatsListScreen
 import com.mvlog.navigation.screen.CollectedScreenFactories
 import com.mvlog.thoon.startup.rememberAppStartup
@@ -44,7 +48,9 @@ fun App() {
             NavigableCircuitContent(
                 navigator = navigator,
                 backStack = backStack,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Theme[colors][backgroundColor]),
             )
         }
     }

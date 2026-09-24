@@ -1,6 +1,5 @@
 package com.mvlog.chat.presentation.ui.item
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,11 +23,9 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Text
 import com.composables.ui.components.Icon
 import com.composables.ui.components.Text
-import com.composables.ui.theme.colors
-import com.composables.ui.theme.panelColor
-import com.composeunstyled.theme.Theme
 import com.mvlog.chat.presentation.ui.model.ChatAttachmentUi
 import com.mvlog.ui.ThoonPreview
+import com.mvlog.ui.components.panel
 
 @Composable
 fun ChatFileAttachment(
@@ -44,8 +40,7 @@ fun ChatFileAttachment(
 
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Theme[colors][panelColor])
+            .panel(RoundedCornerShape(10.dp))
             .padding(10.dp)
             .widthIn(max = 150.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -195,6 +195,10 @@ follows it, and the ones with decisions of their own have a nested `AGENTS.md`.
   `TextOverflow.Clip`, not `Ellipsis`.
 - The chat list is `reverseLayout = true` over `items.asReversed()` — visual index is
   `items.lastIndex - chronologicalIndex`, and index 0 is the *newest*.
+- **Screens are transparent; `App()` paints the theme background.** Android's window background
+  used to stand in for it; web has none. In dark mode `panelColor` is `#171717` on `#0A0A0A`, so a
+  an attachment chip uses `Modifier.panel(shape)` from `common:ui` for its outline. The user message
+  bubble and the chat-list tab pill are fill-only by choice — the outline looked wrong there.
 - `snapshotFlow` emits its current value immediately. The chat screen's follow-the-bottom logic
   depends on this; anything trying to pre-set a flag it writes will be overwritten in the first frame.
 - Ktor logging is capped at `LogLevel.INFO` deliberately: headers carry API keys and bodies carry
