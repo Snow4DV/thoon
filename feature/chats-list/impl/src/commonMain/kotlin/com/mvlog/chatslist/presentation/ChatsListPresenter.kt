@@ -11,7 +11,7 @@ import com.mvlog.agent.api.model.ChatId
 import com.mvlog.agent.api.usecase.CancelChatRunUseCase
 import com.mvlog.agent.api.usecase.DeleteChatUseCase
 import com.mvlog.agent.api.usecase.SearchChatsUseCase
-import com.mvlog.agentconfig.api.AgentConfigurationScreen
+import com.mvlog.settings.api.SettingsScreen
 import com.mvlog.chat.api.ChatScreen
 import com.mvlog.chatslist.presentation.mapper.toRow
 import com.slack.circuit.runtime.Navigator
@@ -58,7 +58,7 @@ class ChatsListPresenter(
                     scope.launch { cancelChatRun(ChatId(event.id)) }
 
                 ChatsListUiEvent.Ui.SettingsClicked ->
-                    navigator.goTo(AgentConfigurationScreen())
+                    navigator.goTo(SettingsScreen())
 
                 is ChatsListUiEvent.Ui.TabSelected -> {
                     tab = event.tab

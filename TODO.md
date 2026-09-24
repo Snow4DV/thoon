@@ -227,7 +227,7 @@ Recorded so they aren't rediscovered as bugs:
 
 ## 4. Chat feature
 
-- [ ] **No settings UI exists.** The configuration use cases support create/edit/remove/observe, a
+- [x] **No settings UI exists** — superseded: `feature:settings` (§8) is the settings UI. The configuration use cases support create/edit/remove/observe, a
       global default and per-chat overrides, but the only thing calling them is
       `DebugAgentConfigSeeder`, driven by a button on the chats list. Its API key is a hardcoded
       constant that must be edited by hand. A `:feature:settings` Circuit screen replaces both
@@ -445,13 +445,13 @@ stack and injected into every presenter; a singleton would have no back stack an
 
 ## 8. Configuration screen — done
 
-`feature:agent-configuration` is split api/impl and registers four screens with the collector. The
+`feature:settings` is split api/impl and registers four screens with the collector. The
 seeder is gone: `DebugAgentConfigSeeder` and `SeedDebugConfig` are deleted, and the chats list's
 "Seed debug config" button is a settings icon.
 
-**One screen renders every settings list.** `AgentConfigurationScreen(section)` — the root is a
-section whose rows navigate, so adding a section costs an entry in `ConfigurationSection` and a
-branch in `configurationSectionItems`, which an exhaustive `when` refuses to compile without. Items
+**One screen renders every settings list.** `SettingsScreen(section)` — the root is a
+section whose rows navigate, so adding a section costs an entry in `SettingsSection` and a
+branch in `settingsSectionItems`, which an exhaustive `when` refuses to compile without. Items
 carry their own lambdas rather than string keys, so the UI is a dumb renderer.
 
 **Model & Provider is not settings-shaped and has its own screens** — `AgentConfigListScreen` and
@@ -469,6 +469,9 @@ reached from the chat's three-dots menu, which until now toggled a boolean nothi
 guard on every write, `isDefault` derived from the observed default rather than held, engines injected
 through the factory, and a `presenter.test {}` suite over fakes. `circuit-test` was added for it.
 
+- [x] **Appearance: light, dark or follow the system.** Stored in `common:user-settings` over
+      `common:shared-preferences`, not Room, so the first frame is already in the right theme. The
+      module was renamed from `feature:agent-configuration` when it stopped being only agent settings
 - [ ] **Agent, Tools and Advanced are empty**, and say why. `agent_settings` holds only
       `defaultConfigId`, so an edited system prompt or a switched-off tool has nowhere to live.
       Giving those sections content means columns first

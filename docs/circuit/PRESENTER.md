@@ -286,7 +286,7 @@ the UI renders, and the presenter is merely their caller. A pure function that b
 `UiState` (a list of rows) sits in `circuit/` beside the presenter that calls it, since it is
 presentation logic, not drawing.
 
-Tests mirror the packages exactly. `feature/agent-configuration/impl` is the reference.
+Tests mirror the packages exactly. `feature/settings/impl` is the reference.
 
 ## When it grows
 

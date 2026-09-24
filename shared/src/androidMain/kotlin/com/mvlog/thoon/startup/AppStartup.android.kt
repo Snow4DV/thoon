@@ -5,8 +5,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.mvlog.agenttools.file.AndroidFilesContext
 import com.mvlog.database.AndroidDatabaseContext
+import com.mvlog.sharedpreferences.impl.AndroidPreferencesContext
 
-// Both holders keep applicationContext, so the Activity is not retained.
+// Every holder keeps applicationContext, so the Activity is not retained.
 @Composable
 actual fun rememberAppStartup() {
     val context = LocalContext.current
@@ -14,6 +15,7 @@ actual fun rememberAppStartup() {
     remember(context) {
         AndroidDatabaseContext.install(context)
         AndroidFilesContext.install(context)
+        AndroidPreferencesContext.install(context)
         AppStartup.start()
     }
 }

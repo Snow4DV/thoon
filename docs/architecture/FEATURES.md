@@ -149,10 +149,10 @@ looks like the model forgetting its abilities mid-session, not like a DI bug.
    for screens they do not own — that is the contract, not a fallback), and the UI. Under
    `presentation/`, **one package per screen, each split into `circuit/` (presenter, held state,
    holder) and `ui/` (composables, `UiState`, `mapper/`, `component/`)**; anything several screens
-   share sits under `common/` (`common/settings/` in agent-configuration), so the screen packages
+   share sits under `common/` (`common/settings/` in settings), so the screen packages
    are the only other children of `presentation/`. The factory that
    claims every screen stays at `presentation/` root. A single-screen feature skips the per-screen
-   level. `feature/agent-configuration/impl` is the reference layout.
+   level. `feature/settings/impl` is the reference layout.
 4. In `impl`'s `build.gradle.kts`: `api(project(":common:navigation"))` and
    `api(project(":feature:foo:api"))` — `api` because `ScreenFactory` and the screen type appear in
    the component's signature — then `implementation` for `:common:di`, `:common:init` and any other

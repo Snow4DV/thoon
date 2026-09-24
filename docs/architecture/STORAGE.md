@@ -82,6 +82,19 @@ while pre-release, and reinstalling was cheaper than migration code nobody would
 install fails loudly on open, which is exactly what the deliberate absence of
 `fallbackToDestructiveMigration` is for.
 
+## Small preferences are not in Room
+
+A value the first frame needs — today only the theme mode — lives in `common:shared-preferences`, a
+synchronous key-value store (`SharedPreferences`, `NSUserDefaults`, `localStorage`), not in
+`ThoonDatabase`. Reading it through Room would open the database before anything is drawn and
+render one frame in the wrong theme while the query ran.
+
+The store knows nothing about what it holds. Each owner creates its own namespace through
+`KeyValueStoreFactory.create(name)` and exposes use cases, not the store:
+`common:user-settings` owns the theme mode and publishes it as a `StateFlow` seeded synchronously,
+so `App()` and the settings screen read the same value with no initial `null`. An unknown stored
+value reads as the default rather than failing. The store is plaintext; secrets never go there.
+
 ## Platform builders
 
 `DatabaseBuilderFactory` is an `expect class`, not an `expect fun`: the platform halves need

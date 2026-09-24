@@ -17,10 +17,11 @@ order-independent, the two phases are not.
 
 ## What each platform installs first
 
-Android's `rememberAppStartup` installs two context holders side by side, `AndroidDatabaseContext`
-and `AndroidFilesContext`, before starting. Two holders rather than one shared one because the file
-tools live in `feature/agent-tools`, a feature module that `common:database` must not depend on.
-Both keep the application context, so the Activity handed in is not retained. They are installed
+Android's `rememberAppStartup` installs three context holders side by side,
+`AndroidDatabaseContext`, `AndroidFilesContext` and `AndroidPreferencesContext`, before starting.
+Separate holders rather than one shared one because each lives in the module that uses it
+(`common:database`, `feature/agent-tools`, `common:shared-preferences:impl`), and none of those may
+depend on another. All keep the application context, so the Activity handed in is not retained. They are installed
 explicitly from `rememberAppStartup` rather than through an androidx.startup `Initializer`: the
 ordering stays visible in the app's own startup code, and no extra `ContentProvider` runs at launch.
 

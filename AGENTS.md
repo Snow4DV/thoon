@@ -18,7 +18,7 @@ turn, which is recovered on next launch.
 
 ```bash
 ./gradlew :androidApp:assembleDebug          # Android app
-./gradlew testAndroidHostTest                # every module's host tests (196 today)
+./gradlew testAndroidHostTest                # every module's host tests (254 today)
 ./gradlew compileKotlinIosSimulatorArm64 compileKotlinIosArm64   # iOS must keep compiling
 ./gradlew :webApp:wasmJsBrowserDistribution  # web (wasmJs) must keep building
 ```
@@ -70,12 +70,14 @@ common/
   agent/tool-api       tool contract, Koog-free, so features can add tools
   navigation           Screen factory collector + the back-stack saver
   database             DaoFactory, database builder (expect/actual)
+  shared-preferences/{api,impl}   synchronous key-value store (SharedPreferences / NSUserDefaults / localStorage)
+  user-settings/{api,impl}        app-level preferences that are not the agent's — the theme mode
   di  init             ComponentHolder / BaseInitializer plumbing
   ui  markdown  log  coroutines  network  serialization
 feature/
   chat/{api,impl}                 the conversation screen
   chats-list/{api,impl}           list, search, bottom bar
-  agent-configuration/{api,impl}  model & provider settings, per-chat overrides — see its AGENTS.md
+  settings/{api,impl}             the settings tree: model & provider, per-chat overrides, appearance — see its AGENTS.md
   agent-tools                     file, web and date/time tools (one module — no screen)
 ```
 
@@ -165,7 +167,7 @@ When it is in a doc, do not link to it from code — the doc is where a reader l
   answered"; "null follows the default"). A caller in another module reads the interface, not a
   nested `AGENTS.md`. Rationale still goes to the docs.
 
-`feature/agent-configuration` is the reference for what this looks like applied; every module now
+`feature/settings` is the reference for what this looks like applied; every module now
 follows it, and the ones with decisions of their own have a nested `AGENTS.md`.
 
 - Kotlin official style, 4 spaces, ~100 column soft wrap.
@@ -205,6 +207,8 @@ Currently accepted, and worth not making worse:
 - **API keys are stored in plaintext** in `agent_config.payloadJson`. App-private storage is the only
   protection; treat a device backup or a rooted device as key exposure. A `SecretStore`
   (Keystore/Keychain) is the planned fix. `AgentConfig.Ollama` holds no credential.
+- `common:shared-preferences` is plaintext too (`shared_prefs/`, `NSUserDefaults`, `localStorage`).
+  It holds small UI preferences only; a key or a token never goes there.
 - **`android:usesCleartextTraffic="true"` is debug convenience** so the emulator can reach a local
   Ollama at `10.0.2.2`. It must not survive into a release build.
 - `fetch_url` and `web_search` return untrusted third-party text into a context that can call

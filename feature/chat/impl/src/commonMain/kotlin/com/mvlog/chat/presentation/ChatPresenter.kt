@@ -8,7 +8,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.mvlog.agentconfig.api.ChatConfigurationScreen
+import com.mvlog.settings.api.ChatConfigurationScreen
 import com.mvlog.chat.api.ChatScreen
 import com.mvlog.agent.api.model.ChatExecutionState
 import com.mvlog.agent.api.model.ChatId

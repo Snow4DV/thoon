@@ -81,7 +81,7 @@ kotlin {
                 // The direction this feature owns. Nothing else may depend on this module.
                 api(project(":feature:chat:api"))
                 // The direction only — the three-dots menu opens this chat's configuration.
-                implementation(project(":feature:agent-configuration:api"))
+                implementation(project(":feature:settings:api"))
                 implementation(project(":common:di"))
                 implementation(project(":common:init"))
                 implementation(project(":common:ui"))

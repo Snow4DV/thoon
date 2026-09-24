@@ -72,7 +72,7 @@ kotlin {
                 implementation(project(":feature:chat:api"))
 
                 // The direction only — the list's settings button opens the configuration screen.
-                implementation(project(":feature:agent-configuration:api"))
+                implementation(project(":feature:settings:api"))
             }
         }
 

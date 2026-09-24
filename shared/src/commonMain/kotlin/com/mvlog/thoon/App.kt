@@ -1,13 +1,19 @@
 package com.mvlog.thoon
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.mvlog.chatslist.api.ChatsListScreen
 import com.mvlog.navigation.screen.CollectedScreenFactories
 import com.mvlog.thoon.startup.rememberAppStartup
+import com.mvlog.thoon.theme.ApplySystemAppearance
 import com.mvlog.ui.ThoonTheme
+import com.mvlog.usersettings.api.di.UserSettingsComponentHolder
+import com.mvlog.usersettings.api.model.isDark
 import com.slack.circuit.backstack.rememberSaveableBackStack
 import com.slack.circuit.foundation.Circuit
 import com.slack.circuit.foundation.CircuitCompositionLocals
@@ -19,7 +25,13 @@ import com.slack.circuit.foundation.rememberCircuitNavigator
 fun App() {
     rememberAppStartup()
 
-    ThoonTheme {
+    val themeMode by remember {
+        UserSettingsComponentHolder.get().observeThemeModeUseCase()()
+    }.collectAsState()
+    val isDark = themeMode.isDark(systemIsDark = isSystemInDarkTheme())
+    ApplySystemAppearance(themeMode, isDark)
+
+    ThoonTheme(isDark = isDark) {
         CircuitCompositionLocals(rememberThoonCircuit()) {
             val backStack = rememberSaveableBackStack(root = ChatsListScreen)
 

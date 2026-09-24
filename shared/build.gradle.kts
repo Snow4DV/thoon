@@ -61,6 +61,7 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
             implementation(libs.compose.ui.tooling.preview)
             implementation(libs.compose.ui.tooling)
         }
@@ -85,13 +86,16 @@ kotlin {
             // circuit-foundation), :common:ui brings the theme every screen reads through.
             implementation(project(":common:navigation"))
             implementation(project(":common:ui"))
+            implementation(project(":common:user-settings:api"))
             // Impl modules for their initializers only — the composition root is the one place
             // that must know every feature exists. Screens arrive through the api modules.
             implementation(project(":feature:chat:impl"))
             implementation(project(":feature:chats-list:impl"))
             implementation(project(":feature:chats-list:api"))
             implementation(project(":feature:agent-tools"))
-            implementation(project(":feature:agent-configuration:impl"))
+            implementation(project(":feature:settings:impl"))
+            implementation(project(":common:shared-preferences:impl"))
+            implementation(project(":common:user-settings:impl"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
