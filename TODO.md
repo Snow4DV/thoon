@@ -373,7 +373,8 @@ okio could not simply be pointed at OPFS, kept so it is not re-derived:
       kotlinx-datetime needs the `@js-joda/timezone` npm package there. Three
       `CurrentDateTimeToolTest` cases fail in `:feature:agent-tools:wasmJsBrowserTest` for this
 - [ ] The network tools cannot work in a browser at all — CORS blocks both `fetch_url` and
-      `web_search` against third-party origins
+      `web_search` against third-party origins. They now fail as a tool result the model reads,
+      not as a failed run; making them work needs a proxy or hiding them on web
 
 ---
 

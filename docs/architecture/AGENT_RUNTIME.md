@@ -130,8 +130,9 @@ contributing a tool never compiles against the framework. `KoogToolRegistryFacto
 `AgentToolSpec` is not a JSON schema, and `AgentToolParameterType` grows only with types the adapter
 can map. Tools are listed in `AgentToolsModule.Impl.agentToolProvider`; **adding one is one class and
 one line in that list.** Providers are invoked per run, never at startup, so nothing in a provider may
-be built in an initializer. Zero-parameter tools are fine. Throw to report failure: the message
-reaches the model as the result, so write it for that reader. Tool names are stored in conversations,
+be built in an initializer. Zero-parameter tools are fine. Throw anything but
+`CancellationException` to report failure: the message reaches the model as the result, so write it
+for that reader. Tool names are stored in conversations,
 so renaming one orphans past calls; descriptions are the model's only guidance on when to call.
 
 `web_search` scrapes DuckDuckGo's HTML endpoint, and three things about it are not obvious:

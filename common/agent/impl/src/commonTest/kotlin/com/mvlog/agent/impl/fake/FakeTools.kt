@@ -36,6 +36,14 @@ internal class RecordingTool(
     }
 }
 
+internal class ThrowingTool(name: String, private val error: Throwable) : ThoonAgentTool {
+
+    override val spec = AgentToolSpec(name = name, description = "A test tool that fails.")
+
+    override suspend fun execute(context: ChatToolContext, arguments: JsonObject): String =
+        throw error
+}
+
 /** The collector is global: register in a test and reset it in `finally`. */
 internal fun registerTools(vararg tools: ThoonAgentTool) {
     AgentToolsCollector.reset()

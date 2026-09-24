@@ -16,6 +16,7 @@ import com.mvlog.agent.impl.fake.RecordingTool
 import com.mvlog.agent.impl.fake.StubLLMClient
 import com.mvlog.agent.impl.fake.TestAgentModule
 import com.mvlog.agent.impl.fake.TestJson
+import com.mvlog.agent.impl.fake.ThrowingTool
 import com.mvlog.agent.impl.fake.registerTools
 import com.mvlog.agent.impl.koog.CheckpointCodec
 import com.mvlog.agent.impl.koog.KoogAgentRunner
@@ -77,6 +78,29 @@ class ToolApprovalFlowTest {
 
         assertEquals(1, clock.calls.size)
         assertEquals(2, client.prompts.size)
+    }
+
+    @Test
+    fun aToolThrowingANonExceptionErrorFailsTheCallNotTheRun() = approvalTest { f ->
+        registerTools(ThrowingTool("fetch", Error("Fail to fetch")))
+        val client = StubLLMClient(
+            StubLLMClient.replyWithToolCall("Fetching", "fetch", "{}"),
+            StubLLMClient.textReply("The page could not be reached"),
+        )
+
+        f.run(client)
+
+        assertEquals(2, client.prompts.size, "the model must see the failure and answer it")
+        val sent = client.prompts.last().messages.last()
+        val result = (sent as? Message.User)?.parts?.filterIsInstance<MessagePart.Tool.Result>()
+            ?.single() ?: fail("the failure must reach the model as a tool result, was: $sent")
+        assertTrue(result.isError, "a thrown tool is reported as an error result")
+        assertTrue(
+            result.parts.filterIsInstance<MessagePart.Text>().any { "Fail to fetch" in it.text },
+            "the model is told what failed, was: ${result.parts}",
+        )
+        val last = f.committedMessages().last()
+        assertTrue(last is Message.Assistant, "the turn must end in the model's answer, was: $last")
     }
 
     @Test

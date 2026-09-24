@@ -20,6 +20,9 @@ Each is stated once, here, and not in code. Koog is pinned at 1.1.1.
   re-injects them through `params.additionalProperties`, the one field the delegate flattens into the
   request root, and reuses Koog's own schema generator so the shape matches the non-streaming path.
   Delete the decorator when upstream fixes it.
+- Koog turns a throwing tool into a failed result only for `Exception`; anything else fails the
+  run. Ktor's JS/wasm engine reports a blocked fetch (CORS) as `kotlin.Error`, so `KoogToolAdapter`
+  wraps every non-`Exception` throwable other than cancellation.
 
 ## Client and capability configuration
 
