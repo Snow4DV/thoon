@@ -12,6 +12,9 @@
   resolved "https://registry.yarnpkg.com/@sqlite.org/sqlite-wasm/-/sqlite-wasm-3.53.4-build1.tgz#796d941a63ef274b220cb709dcba74cc432abdd7"
   integrity sha512-U8pvL0patYHMgieD8JxxYJTlh9m1LUX8+BDYb7MiKQzBI89f2qbdmdcG/PvnPaLm9wsBbv4VlVG453ixnxBOnA==
 
+"thoon-opfs-files@file:../../feature/agent-tools/opfs":
+  version "0.0.0"
+
 "thoon-sqlite-worker@file:../../common/database/worker":
   version "0.0.0"
   dependencies:

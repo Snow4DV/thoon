@@ -2,8 +2,8 @@ package com.mvlog.agenttools.di
 
 import com.mvlog.agent.tool.AgentToolProvider
 import com.mvlog.agenttools.file.ChatFileStore
-import com.mvlog.agenttools.file.OkioChatFileStore
-import com.mvlog.agenttools.file.platformFileSystem
+import com.mvlog.agenttools.file.SandboxedChatFileStore
+import com.mvlog.agenttools.file.platformChatFileBackend
 import com.mvlog.agenttools.file.platformFilesRoot
 import com.mvlog.agenttools.tools.EditFileTool
 import com.mvlog.agenttools.tools.ListFilesTool
@@ -23,10 +23,9 @@ internal interface AgentToolsModule {
 
         /** `by lazy`: resolve the platform files root once, not per tool call. */
         private val fileStore: ChatFileStore by lazy {
-            OkioChatFileStore(
-                fileSystem = platformFileSystem(),
+            SandboxedChatFileStore(
+                backend = platformChatFileBackend(dispatchers),
                 root = platformFilesRoot(),
-                dispatchers = dispatchers,
             )
         }
 

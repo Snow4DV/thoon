@@ -350,11 +350,11 @@ gone, along with `Greeting`, `GreetingUtil` and the `Platform` expect/actual tha
 
 ---
 
-## 5a. The web target needs a second file store
+## 5a. Web: chat files live in OPFS — done
 
-Every module now also builds for `wasmJs` (`:webApp` is the entry point). The file tools run there
-over an in-memory okio `FakeFileSystem`, so a browser reload loses every chat's files. A real store
-is still the fix, and okio cannot be it — okio publishes `wasmJs` artifacts, yet:
+Every module also builds for `wasmJs` (`:webApp` is the entry point). Chat files on web persist in
+the Origin Private File System; how the store is split is in `feature/agent-tools/AGENTS.md`. Why
+okio could not simply be pointed at OPFS, kept so it is not re-derived:
 
 - `FileSystem.SYSTEM` does not exist there; okio's wasm companion declares only
   `SYSTEM_TEMPORARY_DIRECTORY`, because a browser has no system filesystem.
@@ -363,12 +363,15 @@ is still the fix, and okio cannot be it — okio publishes `wasmJs` artifacts, y
   Worker, and directory enumeration stays async even there. So `OpfsFileSystem : FileSystem()`
   cannot be written.
 
-This is why the seam is our own `suspend ChatFileStore` rather than okio's `FileSystem`: a web port
-writes one more implementation of a four-method interface. The sandbox check lives in commonMain on
-okio's `Path`, which *is* available on wasmJs, so the security-critical part is inherited rather
-than rewritten.
-
-- [ ] Write the OPFS-backed `ChatFileStore` for web, replacing the in-memory `FakeFileSystem`
+- [x] OPFS-backed chat files for web, replacing the in-memory `FakeFileSystem`
+- [ ] Not yet checked in Safari, whose main-thread `createWritable()` arrived late. If it is
+      missing, `write_file` fails with a `ChatFileException`; the fallback is a worker using
+      `createSyncAccessHandle()`
+- [ ] Nothing calls `navigator.storage.persist()`, so the browser may evict OPFS — chat files and
+      the database alike — under storage pressure
+- [ ] `current_datetime` fails on web for any named zone (`Invalid zone ID: Europe/Moscow`):
+      kotlinx-datetime needs the `@js-joda/timezone` npm package there. Three
+      `CurrentDateTimeToolTest` cases fail in `:feature:agent-tools:wasmJsBrowserTest` for this
 - [ ] The network tools cannot work in a browser at all — CORS blocks both `fetch_url` and
       `web_search` against third-party origins
 

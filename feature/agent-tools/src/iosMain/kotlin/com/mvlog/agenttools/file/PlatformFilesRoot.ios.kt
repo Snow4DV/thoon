@@ -1,5 +1,6 @@
 package com.mvlog.agenttools.file
 
+import com.mvlog.coroutines.dispatcher.CoroutineDispatchers
 import kotlinx.cinterop.ExperimentalForeignApi
 import okio.FileSystem
 import okio.Path
@@ -23,4 +24,5 @@ internal actual fun platformFilesRoot(): Path {
     return requireNotNull(url.path) { "Documents directory URL has no path" }.toPath()
 }
 
-internal actual fun platformFileSystem(): FileSystem = FileSystem.SYSTEM
+internal actual fun platformChatFileBackend(dispatchers: CoroutineDispatchers): ChatFileBackend =
+    OkioChatFileBackend(FileSystem.SYSTEM, dispatchers)

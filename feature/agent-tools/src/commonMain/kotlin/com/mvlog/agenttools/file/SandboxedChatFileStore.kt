@@ -1,39 +1,18 @@
 package com.mvlog.agenttools.file
 
-import com.mvlog.coroutines.dispatcher.CoroutineDispatchers
-import kotlinx.coroutines.withContext
-import okio.FileSystem
 import okio.Path
 
-internal class OkioChatFileStore(
-    private val fileSystem: FileSystem,
+internal class SandboxedChatFileStore(
+    private val backend: ChatFileBackend,
     private val root: Path,
-    private val dispatchers: CoroutineDispatchers,
 ) : ChatFileStore {
 
-    override suspend fun list(chatId: String): List<ChatFileEntry> = io {
-        val chatRoot = chatRoot(chatId)
-        if (!fileSystem.exists(chatRoot)) return@io emptyList()
+    override suspend fun list(chatId: String): List<ChatFileEntry> =
+        backend.listFiles(chatRoot(chatId)).sortedBy { it.path }
 
-        fileSystem.listRecursively(chatRoot)
-            .filter { fileSystem.metadataOrNull(it)?.isRegularFile == true }
-            .map { path ->
-                ChatFileEntry(
-                    path = path.relativeTo(chatRoot).toString(),
-                    sizeBytes = fileSystem.metadataOrNull(path)?.size ?: 0L,
-                )
-            }
-            .toList()
-            .sortedBy { it.path }
-    }
-
-    override suspend fun read(chatId: String, path: String): String = io {
+    override suspend fun read(chatId: String, path: String): String {
         val file = ChatFilePaths.resolve(chatRoot(chatId), path)
-        if (!fileSystem.exists(file)) {
-            throw ChatFileException("'$path' does not exist. Use list_files to see what does.")
-        }
-
-        val size = fileSystem.metadataOrNull(file)?.size ?: 0L
+        val size = backend.size(file) ?: throw missingForRead(path)
         if (size > MAX_READ_BYTES) {
             // Refuse rather than truncate: a clipped file has the model reasoning about text it
             // cannot see.
@@ -42,13 +21,11 @@ internal class OkioChatFileStore(
             )
         }
 
-        fileSystem.read(file) { readUtf8() }
+        return backend.readText(file) ?: throw missingForRead(path)
     }
 
-    override suspend fun write(chatId: String, path: String, content: String): Unit = io {
-        val file = ChatFilePaths.resolve(chatRoot(chatId), path)
-        file.parent?.let { fileSystem.createDirectories(it) }
-        fileSystem.write(file) { writeUtf8(content) }
+    override suspend fun write(chatId: String, path: String, content: String) {
+        backend.writeText(ChatFilePaths.resolve(chatRoot(chatId), path), content)
     }
 
     override suspend fun edit(
@@ -56,17 +33,15 @@ internal class OkioChatFileStore(
         path: String,
         oldText: String,
         newText: String,
-    ): EditResult = io {
+    ): EditResult {
         if (oldText.isEmpty()) {
             throw ChatFileException("old_text must not be empty. Use write_file to create a file.")
         }
 
         val file = ChatFilePaths.resolve(chatRoot(chatId), path)
-        if (!fileSystem.exists(file)) {
-            throw ChatFileException("'$path' does not exist, so there is nothing to edit.")
-        }
+        val original = backend.readText(file)
+            ?: throw ChatFileException("'$path' does not exist, so there is nothing to edit.")
 
-        val original = fileSystem.read(file) { readUtf8() }
         val first = original.indexOf(oldText)
         if (first < 0) {
             throw ChatFileException(
@@ -83,14 +58,15 @@ internal class OkioChatFileStore(
         }
 
         val updated = original.replaceRange(first, first + oldText.length, newText)
-        fileSystem.write(file) { writeUtf8(updated) }
+        backend.writeText(file, updated)
 
-        EditResult(path = path, excerpt = updated.excerptAround(first, newText.length))
+        return EditResult(path = path, excerpt = updated.excerptAround(first, newText.length))
     }
 
     private fun chatRoot(chatId: String): Path = root / CHATS_DIRECTORY / chatId
 
-    private suspend fun <T> io(block: () -> T): T = withContext(dispatchers.io) { block() }
+    private fun missingForRead(path: String) =
+        ChatFileException("'$path' does not exist. Use list_files to see what does.")
 
     private companion object {
         const val CHATS_DIRECTORY = "chats"

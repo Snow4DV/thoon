@@ -51,7 +51,13 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        browser()
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
     }
 
     // Source set declarations.
@@ -109,7 +115,7 @@ kotlin {
 
         wasmJsMain {
             dependencies {
-                implementation(libs.okio.fakefilesystem)
+                implementation(npm("thoon-opfs-files", layout.projectDirectory.dir("opfs").asFile))
             }
         }
 

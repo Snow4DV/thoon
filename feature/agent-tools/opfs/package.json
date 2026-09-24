@@ -1,0 +1,8 @@
+{
+  "name": "thoon-opfs-files",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "opfs-files.mjs",
+  "exports": "./opfs-files.mjs"
+}

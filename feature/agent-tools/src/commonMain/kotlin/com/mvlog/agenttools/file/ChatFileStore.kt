@@ -1,6 +1,5 @@
 package com.mvlog.agenttools.file
 
-/** Suspending and okio-free so a non-okio (OPFS) implementation can exist. */
 internal interface ChatFileStore {
 
     suspend fun list(chatId: String): List<ChatFileEntry>

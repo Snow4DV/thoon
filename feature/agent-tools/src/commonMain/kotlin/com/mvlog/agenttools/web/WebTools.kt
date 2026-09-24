@@ -11,6 +11,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import com.mvlog.agenttools.tools.requireString
 
@@ -46,7 +47,9 @@ internal class FetchUrlTool(private val httpClient: HttpClient) : ThoonAgentTool
 
         val response = try {
             httpClient.get(url) { header("User-Agent", USER_AGENT) }
-        } catch (error: Exception) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             throw WebToolException("Could not reach '$url': ${error.message}")
         }
 
@@ -85,7 +88,9 @@ internal class WebSearchTool(private val httpClient: HttpClient) : ThoonAgentToo
                 parameter("q", query)
                 header("User-Agent", USER_AGENT)
             }
-        } catch (error: Exception) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             throw WebToolException("Search failed: ${error.message}")
         }
 

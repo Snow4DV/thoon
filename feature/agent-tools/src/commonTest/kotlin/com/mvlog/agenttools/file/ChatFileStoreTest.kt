@@ -1,8 +1,5 @@
 package com.mvlog.agenttools.file
 
-import com.mvlog.coroutines.dispatcher.CoroutineDispatchers
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
@@ -11,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class OkioChatFileStoreTest {
+class ChatFileStoreTest {
 
     @Test
     fun editReplacesTheMatchAndReturnsWhatTheFileNowSays() = runTest {
@@ -87,18 +84,19 @@ class OkioChatFileStoreTest {
         assertTrue("does not exist" in error.message.orEmpty(), "was: ${error.message}")
     }
 
-    private fun store(): ChatFileStore = OkioChatFileStore(
-        fileSystem = FakeFileSystem(),
-        root = "/files".toPath(),
-        dispatchers = TestDispatchers,
-    )
+    @Test
+    fun aDirectoryIsNotReadAsAFile() = runTest {
+        val store = store()
+        store.write(CHAT, "a/b.txt", "x")
 
-    private object TestDispatchers : CoroutineDispatchers {
-        override val default: CoroutineDispatcher = Dispatchers.Unconfined
-        override val io: CoroutineDispatcher = Dispatchers.Unconfined
-        override val main: CoroutineDispatcher = Dispatchers.Unconfined
-        override val immediate: CoroutineDispatcher = Dispatchers.Unconfined
+        val error = assertFailsWith<ChatFileException> { store.read(CHAT, "a") }
+        assertTrue("does not exist" in error.message.orEmpty(), "was: ${error.message}")
     }
+
+    private fun store(): ChatFileStore = SandboxedChatFileStore(
+        backend = OkioChatFileBackend(FakeFileSystem(), UnconfinedDispatchers),
+        root = "/files".toPath(),
+    )
 
     private companion object {
         const val CHAT = "chat-1"

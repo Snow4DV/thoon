@@ -13,6 +13,7 @@ import com.mvlog.agent.tool.AgentToolsCollector
 import com.mvlog.agent.tool.ChatToolContext
 import com.mvlog.agent.tool.ThoonAgentTool
 import com.mvlog.log.TLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 
 internal class KoogToolRegistryFactory {
@@ -51,10 +52,20 @@ private class KoogToolAdapter(
     descriptor = tool.spec.toDescriptor(),
 ) {
 
-    override suspend fun execute(args: JsonObject): String = tool.execute(context, args)
+    override suspend fun execute(args: JsonObject): String = try {
+        tool.execute(context, args)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        throw error
+    } catch (error: Throwable) {
+        throw ToolFailure(error.message ?: error::class.simpleName ?: "Unknown error", error)
+    }
 
     override fun encodeResultToString(result: String, serializer: JSONSerializer): String = result
 }
+
+private class ToolFailure(message: String, cause: Throwable) : Exception(message, cause)
 
 private fun AgentToolSpec.toDescriptor(): ToolDescriptor = ToolDescriptor(
     name = name,

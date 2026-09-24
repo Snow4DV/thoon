@@ -16,14 +16,34 @@ URL. Marking `url` would make each new address ask again while remembering the o
 Every file tool resolves its path through `ChatFilePaths`, which normalises before the containment
 check (`a/../../b`), compares segment-wise (`chat-1-notes` is not inside `chat-1`), and refuses
 absolute paths and the chat folder itself. It lives in `commonMain` on okio `Path`, which is
-available on wasmJs unlike `FileSystem.SYSTEM`, so a future OPFS store inherits the check unchanged.
+available on wasmJs, so every platform runs the same check.
 This is the security boundary for text fetched by `fetch_url` and `web_search` (see the root
 security constraints).
 
-## `ChatFileStore` is suspending and okio-free
+## Rules above, storage below: `SandboxedChatFileStore` over a `ChatFileBackend`
 
-A web port replaces the store, not the check: okio `FileSystem` is synchronous and OPFS is not (its
-sync API exists only inside a Web Worker), so an `OpfsFileSystem : FileSystem()` cannot exist.
+`SandboxedChatFileStore` owns every rule the tools see — sandbox resolution, the read limit, the
+exactly-once edit and its excerpt — once, in `commonMain`. A `ChatFileBackend` only stores bytes at
+already-resolved paths: `OkioChatFileBackend` on Android and iOS, `OpfsChatFileBackend` on web. A
+second store copying the rules would drift, so a new platform writes a backend, never a store.
+`ChatFileBackendContract` is the definition of a backend; both run it.
+
+okio cannot be the web backend: its `FileSystem` is synchronous and OPFS is not (the sync API
+exists only inside a Web Worker). Hence a suspending interface of our own.
+
+## The web backend
+
+Files live in OPFS under `/agent-files`, not the OPFS root, because SQLite-WASM keeps `thoon.db`
+and its journals at the root. The OPFS calls are a small ES module in `opfs/` (a local npm package,
+`thoon-opfs-files`), since `kotlinx-browser` has no File System Access types and async iterators
+read naturally in JS. It passes a DOMException's name inside the error message, because a rejected
+promise reaches Kotlin as a plain `Exception` carrying only the text; `OpfsChatFileBackend` turns
+that into a `ChatFileException`. Writes go through `createWritable()`, which replaces the file on
+`close()`, so an interrupted write keeps the old content.
+
+The module's browser tests run in headless Chrome (`wasmJsBrowserTest`, Karma): OPFS needs a real
+browser, and Karma's localhost is a secure context. Adding an npm module needs
+`./gradlew kotlinWasmUpgradeYarnLock`, or `kotlinWasmStoreYarnLock` fails the build.
 
 ## `edit_file`
 
