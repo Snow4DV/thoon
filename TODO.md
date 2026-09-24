@@ -366,7 +366,9 @@ okio could not simply be pointed at OPFS, kept so it is not re-derived:
 - [x] OPFS-backed chat files for web, replacing the in-memory `FakeFileSystem`
 - [ ] Not yet checked in Safari, whose main-thread `createWritable()` arrived late. If it is
       missing, `write_file` fails with a `ChatFileException`; the fallback is a worker using
-      `createSyncAccessHandle()`
+      `createSyncAccessHandle()`. A phone must reach the dev server over HTTPS
+      (`THOON_HTTPS=1 ./gradlew :webApp:wasmJsBrowserDevelopmentRun`): plain HTTP to a LAN IP is
+      not a secure context, so neither the database nor chat files can open
 - [ ] Nothing calls `navigator.storage.persist()`, so the browser may evict OPFS — chat files and
       the database alike — under storage pressure
 - [ ] `current_datetime` fails on web for any named zone (`Invalid zone ID: Europe/Moscow`):
@@ -374,7 +376,8 @@ okio could not simply be pointed at OPFS, kept so it is not re-derived:
       `CurrentDateTimeToolTest` cases fail in `:feature:agent-tools:wasmJsBrowserTest` for this
 - [ ] The network tools cannot work in a browser at all — CORS blocks both `fetch_url` and
       `web_search` against third-party origins. They now fail as a tool result the model reads,
-      not as a failed run; making them work needs a proxy or hiding them on web
+      not as a failed run; making them work needs a proxy or hiding them on web. Ollama already
+      goes through one, but only on the dev server (`/ollama` in `webApp/webpack.config.d`)
 
 ---
 

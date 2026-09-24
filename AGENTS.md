@@ -32,7 +32,9 @@ cheapest way to find out.
 - Local model for development: Ollama on the host, reached from the emulator as
   `http://10.0.2.2:11434` (`AgentConfig.Ollama`; `localhost` on the emulator is the emulator).
   `normalizeBaseUrl` turns a bare private/loopback address into `http://` and anything routable
-  into `https://`, so that address is accepted without a scheme.
+  into `https://`, so that address is accepted without a scheme. On web the dev server proxies
+  Ollama at `<page origin>/ollama` (e.g. `https://192.168.15.93:8080/ollama`, typed with its
+  scheme), which avoids both CORS and mixed content.
 - Inspecting the database: `adb shell run-as com.mvlog.thoon cat databases/thoon.db` — **and
   `thoon.db-wal` and `thoon.db-shm`**; recent writes live in the WAL and a pull of the main file
   alone shows stale data. Pull into the scratchpad, query with `sqlite3`, and **delete the copies

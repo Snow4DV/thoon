@@ -3,10 +3,12 @@ package com.mvlog.chat.presentation.ui.item
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -107,9 +109,10 @@ fun ChatToolApproval(
 private fun ChatToolApprovalActions(onDecided: (ToolApprovalDecision) -> Unit) {
     var isScopeMenuVisible by remember { mutableStateOf(false) }
 
-    Row(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Button(
             style = ButtonStyle.Primary,
@@ -180,6 +183,13 @@ private fun ChatToolApprovalPreview() {
                 arguments = """{"path":"notes.md","content":"# Trip"}""",
                 decision = null,
                 onDecided = {},
+            )
+            ChatToolApproval(
+                toolName = "write_file",
+                arguments = """{"path":"notes.md"}""",
+                decision = null,
+                onDecided = {},
+                modifier = Modifier.width(260.dp),
             )
             ChatToolApproval(
                 toolName = "fetch_url",

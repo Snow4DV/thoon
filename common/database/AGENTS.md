@@ -30,7 +30,10 @@ Room 3 is the first Room with a web target, and its `WebWorkerSQLiteDriver` only
 protocol; androidx ships no worker. `worker/` is a local npm module implementing that protocol over
 SQLite-WASM, persisting through OPFS (`OpfsDb`). OPFS needs `SharedArrayBuffer`, so the page must be
 cross-origin isolated: `webApp/webpack.config.d` sets COOP/COEP for the dev server, and any real host
-must send the same headers or opening the database fails.
+must send the same headers or opening the database fails. The page must also be a secure context
+(HTTPS or `localhost`): over plain HTTP to a LAN address, `oo1.OpfsDb` is never installed and
+opening fails with `OpfsDb is not a constructor`. To test on a phone, run the dev server with
+`THOON_HTTPS=1` (self-signed certificate, accepted once on the device).
 
 The worker is adapted from androidx's `room-web-demo` with two changes: it no longer logs every
 request (SQL bindings carry conversations and API keys), and it closes statement and database id 0,
