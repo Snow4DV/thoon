@@ -41,8 +41,8 @@ the only place they genuinely share.
 
 ### 1.2 Android manifest
 
-`INTERNET` is now declared. `android:usesCleartextTraffic="true"` is also set so the debug seeder can
-point at a local LLM server over plain HTTP.
+`INTERNET` is now declared. `android:usesCleartextTraffic="true"` is also set so the app can reach
+a local Ollama over plain HTTP (`http://10.0.2.2:11434` from the emulator).
 
 - [ ] **Remove `usesCleartextTraffic` before any release build.** It is debug convenience only
 
@@ -56,9 +56,11 @@ point at a local LLM server over plain HTTP.
 `AgentRunnerFactory`. With no configuration the run fails visibly rather than answering — an echo
 stub would present a setup problem as a working agent.
 
-- [ ] **No request has ever been sent.** Verify against a real endpoint (OpenAI, OpenRouter, or a
-      local LM Studio / Ollama server) — streaming, history round-trip, and error paths
-- [ ] Tools and planning strategies: the runner is a plain streaming exchange with neither
+- [x] The Ollama path is the development setup (see §2.1b, §2.1c) and runs against a real server
+- [ ] `AgentConfig.OpenAiCompatible` and `AgentConfig.Anthropic` have not been verified against a
+      real endpoint — streaming, history round-trip, and error paths
+- [x] Tools: superseded by the loop in §2.3
+- [ ] Planning strategies: none
 
 ### 2.1a A crash inside a tool leaves its side effect unrecorded
 
@@ -134,8 +136,8 @@ by hand, so a real key can be entered without editing source. It goes into the s
 
 ### 2.3 Tools — done
 
-`feature:agent-tools` contributes six: `list_files`, `read_file`, `write_file`, `edit_file`,
-`fetch_url` and `web_search`. They reach the runner through `common:agent:tool-api`, a Koog-free
+`feature:agent-tools` contributes seven: `list_files`, `read_file`, `write_file`, `edit_file`,
+`fetch_url`, `web_search` and `current_datetime`. They reach the runner through `common:agent:tool-api`, a Koog-free
 contract, so a feature that contributes a tool never compiles against the framework — the separate
 module §2.3 originally called for, rather than widening `common:agent:api`.
 
@@ -169,9 +171,13 @@ ending when a reply carries no tool calls, bounded by a per-run budget.
 
 ### 2.4 Process-death recovery — partially done
 
-`AgentRunCoordinator.start()` re-queues prompts whose durable conversation ends unanswered. Chats
-holding a live checkpoint are deliberately left alone: auto-resuming every one would retry-loop on a
-run that fails for a permanent reason (a bad API key would re-fire on each launch).
+`AgentRunCoordinator.start()` calls `RetryChatUseCase` for every chat that
+`chatsWithUnansweredPrompts` returns: an unanswered prompt, an unfinished tool turn, or pending tool
+calls. Those checks read the latest live checkpoint if one exists, else committed history, so a
+chat holding a checkpoint is no longer excluded.
+
+- [ ] Check that a run failing for a permanent reason (a bad API key) is not re-fired on every
+      launch: nothing in the recovery path tells "killed" from "failed" today
 
 - [ ] Optional: resume from a checkpoint via `Persistence.Feature.runFromCheckpoint`, using Koog's
       tombstones to tell "killed" from "failed" so a doomed run is not retried forever
@@ -194,8 +200,8 @@ run that fails for a permanent reason (a bad API key would re-fire on each launc
 
 Room's KSP validates every query against the schema at build time, so the SQL is not merely
 hopeful — but **no test has executed a single statement**. `RoomChatHistoryRepository`,
-`RoomCheckpointRepository`, `RoomChatMetadataRepository` and `RoomAgentConfigRepository` have never
-run; every test uses in-memory equivalents.
+`RoomCheckpointRepository`, `RoomChatMetadataRepository`, `RoomAgentConfigRepository` and
+`RoomToolApprovalRuleRepository` have never run; every test uses in-memory equivalents.
 
 The app itself now opens it — the chats list reads `agent_chat` on launch, so the Room actuals are
 no longer purely theoretical. **No automated test still executes SQL**, so a regression would only
@@ -204,8 +210,10 @@ surface by running the app.
 - [ ] Add instrumented / simulator tests that open `ThoonDatabase` and exercise the repositories
 - [ ] These must live in `:shared` — feature modules cannot build the database, because it sits
       downstream of them (it has to see their entities)
-- [ ] `ChatDao.deleteChat` is the one hand-written `@Transaction` (row + checkpoints, since
-      `agent_checkpoint` has no FK cascade). It has never been executed under test
+- [ ] Four hand-written `@Transaction`s have never been executed under test:
+      `ChatDao.deleteChat` (row + checkpoints, since `agent_checkpoint` has no FK cascade),
+      `ChatDao.commitConversation`, `AgentConfigDao.deleteAndDetach` and `AgentCheckpointDao.save`.
+      A chat's approval rules are deleted by `DeleteChatUseCaseImpl` outside that transaction
 
 ### 3.2 Migrations
 
@@ -231,24 +239,22 @@ Recorded so they aren't rediscovered as bugs:
       global default and per-chat overrides, but the only thing calling them is
       `DebugAgentConfigSeeder`, driven by a button on the chats list. Its API key is a hardcoded
       constant that must be edited by hand. A `:feature:settings` Circuit screen replaces both
-- [ ] Submit is bound to the keyboard's Send action (`ImeAction.Send` + `onKeyboardAction`). There
-      is no send button — the `PromptSubmitted` event contract is already in place for one
-- [ ] `CancelGenerationClicked` is handled by the presenter but no UI element emits it
-- [ ] **Nothing ever names a chat.** `ChatMetadataRepository.setTitle` exists and has no callers, so
-      every `ChatSummary.title` is null and the list falls back to `"Chat <id prefix>"`. Deriving a
-      title from the first prompt is the obvious fix
+- [x] The prompt field has a Send button beside the keyboard's Send action, and a Stop button
+      during a run that emits `CancelGenerationClicked`
+- [x] A chat is named after the first line of its first prompt (`chatTitleFrom` in
+      `SendPromptUseCase`); the list still falls back to `"Chat <id prefix>"` for an untitled chat
 - [ ] The chat screen's own title is hardcoded to `"Thoon"`
 - [ ] Attachments: `ChatItem.Message.attachments` is always `persistentListOf()` — the agent api's
       `ChatItem` has no attachment concept yet
-- [ ] Reasoning → `Thought` mapping splits the agent's single reasoning stream on blank lines,
-      which is a heuristic, not a real structure
+- [ ] Reasoning → `Thought` mapping splits the agent's single reasoning stream on every newline
+      (`ChatItemUiMapper`), which is a heuristic, not a real structure
 
 ---
 
 ## 4a. Chats list — deliberately primitive
 
 `feature/chats-list` exists to make the app testable, not to be the real screen. It lists chats
-newest-first, opens one, creates one, deletes one, and seeds a debug configuration.
+newest-first, searches, opens one, creates one, deletes one, and links to settings.
 
 - [x] **The feature-to-feature coupling is gone.** Both features are split into `api` (one `Screen`,
       the navigation key) and `impl` (everything else), so `chats-list:impl` depends on
@@ -261,7 +267,8 @@ newest-first, opens one, creates one, deletes one, and seeds a debug configurati
 - [ ] Deleting a chat does **not** cancel a run already executing for it. The run finishes against a
       row that no longer exists (`commitHistory` is an `UPDATE`, so it is a harmless no-op) but the
       work is wasted. Proper cancellation belongs with `AgentRunCoordinator`
-- [ ] No confirmation on delete, no empty-state design, no pagination
+- [x] Empty states for no chats and no search matches
+- [ ] No confirmation on delete, no pagination
 
 ---
 
@@ -345,7 +352,7 @@ dependency's `jvmCommonMain` (see §6, `HttpClientFactoryResolver`).
 `SharedCommonTest`, `SharedLogicAndroidHostTest`, `SharedLogicIOSTest` (all asserting `3 == 3`) are
 gone, along with `Greeting`, `GreetingUtil` and the `Platform` expect/actual that only they used.
 
-- [ ] `feature/chat`'s own `ExampleUnitTest` / `ExampleInstrumentedTest` are still wizard leftovers
+- [x] `feature/chat`'s own `ExampleUnitTest` / `ExampleInstrumentedTest` are gone
 - [ ] The generated `compose_multiplatform` drawable is now unreferenced
 
 ---
@@ -475,7 +482,9 @@ through the factory, and a `presenter.test {}` suite over fakes. `circuit-test` 
 - [x] **Appearance: light, dark or follow the system.** Stored in `common:user-settings` over
       `common:shared-preferences`, not Room, so the first frame is already in the right theme. The
       module was renamed from `feature:agent-configuration` when it stopped being only agent settings
-- [ ] **Agent, Tools and Advanced are empty**, and say why. `agent_settings` holds only
+- [x] **Tools** lists every approval-gated tool with an "allow everywhere" toggle, backed by the
+      global rules in `agent_tool_approval_rule`
+- [ ] **Agent and Advanced are empty**, and say why. `agent_settings` holds only
       `defaultConfigId`, so an edited system prompt or a switched-off tool has nowhere to live.
       Giving those sections content means columns first
 - [ ] `LocalEnginesCollector` is empty because nothing implements an on-device engine. Registering a

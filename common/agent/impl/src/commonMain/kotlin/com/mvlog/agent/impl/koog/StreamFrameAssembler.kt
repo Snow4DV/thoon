@@ -6,7 +6,6 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import com.mvlog.agent.impl.util.AgentClock
 
-/** Named for the helper Koog 1.1.1 lacks; adopting theirs is a deletion. */
 internal fun List<StreamFrame>.toMessageResponse(clock: AgentClock): Message.Assistant {
     val assembler = StreamFrameAssembler()
     forEach(assembler::accept)

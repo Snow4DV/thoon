@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      usesCleartextTraffic is debug convenience only: it lets the seeder point at a local LLM
+      usesCleartextTraffic is debug convenience only: it lets the app reach a local LLM
       server over plain HTTP (http://10.0.2.2:11434 from an emulator). Android has blocked
       cleartext by default since API 28. Remove it before any release build.
     -->

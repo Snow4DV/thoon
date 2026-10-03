@@ -3,13 +3,14 @@
 The agent subsystem: `api` (use cases and models), `tool-api` (the Koog-free tool contract) and
 `impl` (runtime, storage, Koog). How it works is in `docs/architecture/AGENT_RUNTIME.md` and
 `docs/architecture/STORAGE.md`. This file holds the decisions and traps specific to these modules.
-Each is stated once, here, and not in code. Koog is pinned at 1.1.1.
+Each is stated once, here, and not in code. Koog is pinned at 1.2.0.
 
-## Koog 1.1.1 gaps and JVM-only APIs
+## Koog 1.2.0 gaps and JVM-only APIs
 
 - No `SingleLLMPromptExecutor`; `MultiLLMPromptExecutor` with one client is the equivalent.
-- No `List<StreamFrame>.toMessageResponse`; `StreamFrameAssembler` is named for it so adopting the
-  library's is a deletion.
+- Koog's `Iterable<StreamFrame>.toMessageResponse()` keeps only complete frames and drops deltas, so
+  a stream that never sends a complete frame for a section loses it. `StreamFrameAssembler` builds
+  the message from deltas too, with a complete frame winning; it is not a drop-in for the library's.
 - `openAIClient()`, `anthropicClient()`, `ollamaClient()`, `HttpClientFactoryResolver.resolve()`,
   `ToolSet`, `@Tool` and `asTools()` are `jvmCommonMain`-only. Use the client constructors,
   `KtorKoogHttpClient.Factory(baseClient = …)` (which also shares the app's one connection pool),

@@ -40,7 +40,8 @@ cheapest way to find out.
   alone shows stale data. Pull into the scratchpad, query with `sqlite3`, and **delete the copies
   afterwards** — they hold the owner's conversations. This is also the only way the SQL is verified
   (see Testing).
-- `README.md` is the stale KMP template. Ignore it. `TODO.md` is real and current.
+- `README.md` is the human-facing overview and setup guide; this file and `docs/` are the
+  record. `TODO.md` is real and current.
 - **Confirm a new test actually ran.** Gradle prints `BUILD SUCCESSFUL` when a test file was never
   written (a heredoc into a directory that does not exist fails silently) or was filtered out. Check
   `<module>/build/test-results/testAndroidHostTest/TEST-<class>.xml` for `tests="N"`, or use
@@ -118,7 +119,7 @@ and **a DAO added without registering it in `DatabaseInitializer` fails at runti
 
 In [`docs/architecture/AGENT_RUNTIME.md`](docs/architecture/AGENT_RUNTIME.md): a prompt's life from
 durable row to committed conversation, what a chat is "waiting on", checkpoints, and the seven tools.
-Module decisions and Koog 1.1.1 quirks are in `common/agent/AGENTS.md`; the tools' own decisions in
+Module decisions and Koog 1.2.0 quirks are in `common/agent/AGENTS.md`; the tools' own decisions in
 `feature/agent-tools/AGENTS.md`. Three lines worth repeating here: **`ChatMemory` replaces the prompt
 with restored history, so the system message must be restored too and editing it reaches new chats
 only**; **Koog's reflective tool API and `openAIClient()` are JVM-only and break the iOS build**; and
