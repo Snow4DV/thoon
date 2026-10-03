@@ -21,6 +21,12 @@ Each is stated once, here, and not in code. Koog is pinned at 1.2.0.
   re-injects them through `params.additionalProperties`, the one field the delegate flattens into the
   request root, and reuses Koog's own schema generator so the shape matches the non-streaming path.
   Delete the decorator when upstream fixes it.
+- `KtorKoogHttpClient.lines()` (Ollama's only streaming path) emits from inside Ktor's `execute`,
+  which on Ktor 3.6+ switches dispatcher on non-JVM targets, so every Ollama run fails on iOS with a
+  flow-invariant violation ([koog#2245](https://github.com/JetBrains/koog/issues/2245)).
+  `ChannelLinesKoogHttpClient` delegates everything else and reimplements `lines()` over
+  `channelFlow`; its `Factory` is the one `KoogClientFactory` hands to every client. Delete it when
+  upstream fixes the issue.
 - Koog turns a throwing tool into a failed result only for `Exception`; anything else fails the
   run. Ktor's JS/wasm engine reports a blocked fetch (CORS) as `kotlin.Error`, so `KoogToolAdapter`
   wraps every non-`Exception` throwable other than cancellation.

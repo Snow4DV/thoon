@@ -8,6 +8,17 @@ check the time.
 You can run multiple agents asynchronously: give multiple tasks to your agents and wait for the
 result.
 
+## Screenshots
+
+<p>
+  <img src="img/1.png" width="200" alt="Empty chats list">
+  <img src="img/2.png" width="200" alt="Tool approval">
+  <img src="img/3.png" width="200" alt="Answer after web search and fetch">
+  <img src="img/4.png" width="200" alt="Markdown table in an answer">
+  <img src="img/6.png" width="200" alt="iOS, light theme">
+  <img src="img/5.png" width="480" alt="Web version in a browser">
+</p>
+
 ## KMP & CMP
 KMP and CMP are used for this project so both business logic and UI are reused between platforms.
 There are some limitations though:

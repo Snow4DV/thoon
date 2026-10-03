@@ -1,7 +1,6 @@
 package com.mvlog.agent.impl.koog
 
 import ai.koog.http.client.KoogHttpClient
-import ai.koog.http.client.ktor.KtorKoogHttpClient
 import io.ktor.client.HttpClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicClientSettings
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
@@ -87,7 +86,7 @@ internal class KoogClientFactory(
      * create.
      */
     private val koogHttpClientFactory: KoogHttpClient.Factory
-        get() = KtorKoogHttpClient.Factory(baseClient = httpClient)
+        get() = ChannelLinesKoogHttpClient.Factory(baseClient = httpClient)
 
     private companion object {
         const val DEFAULT_OPENAI_BASE_URL = "https://api.openai.com"
